@@ -1,7 +1,8 @@
 <?php
+
 include "db_connect.php";
 
-$id = (int)($_GET['id'] ?? 0);
+$id = (int) ($_GET['id'] ?? 0);
 if ($id > 0) {
     $stmt = $conn->prepare("DELETE FROM students WHERE id=?");
     $stmt->bind_param("i", $id);

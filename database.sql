@@ -1,21 +1,37 @@
-CREATE TABLE IF NOT EXISTS students (
-  id INT(11) NOT NULL AUTO_INCREMENT,
-  student_id VARCHAR(20) NOT NULL UNIQUE,
-  first_name VARCHAR(50) NOT NULL,
-  last_name VARCHAR(50) NOT NULL,
-  email VARCHAR(100) NOT NULL,
-  course VARCHAR(100) NOT NULL,
-  major VARCHAR(100) DEFAULT NULL,
-  year_level TINYINT(1) NOT NULL,
-  status VARCHAR(20) NOT NULL DEFAULT 'Enrolled',
-  gpa VARCHAR(10) DEFAULT '1.75',
-  remarks VARCHAR(100) DEFAULT 'Good Standing',
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id)
+
+CREATE TABLE IF NOT EXISTS `courses` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `course_code` VARCHAR(20) NOT NULL UNIQUE,
+  `course_name` VARCHAR(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO students (student_id, first_name, last_name, email, course, major, year_level, status, gpa, remarks) VALUES
-('2026-0101', 'Juan', 'Dela Cruz', 'juan.delacruz@example.com', 'BSIT', 'Web Development', 3, 'Enrolled', '1.25', 'Dean\'s Lister'),
-('2026-0102', 'Maria', 'Santos', 'maria.santos@example.com', 'BSCS', 'Data Science', 2, 'Enrolled', '1.50', 'Dean\'s Lister'),
-('2026-0103', 'Carlo', 'Reyes', 'carlo.reyes@example.com', 'BSIT', 'Network & Security', 1, 'Inactive', '2.50', 'Passed'),
-('2026-0104', 'Ana', 'Lopez', 'ana.lopez@example.com', 'BSBA', 'Financial Management', 4, 'Enrolled', '1.75', 'Good Standing');
+INSERT INTO `courses` (`id`, `course_code`, `course_name`) VALUES
+(1, 'BSIT', 'Bachelor of Science in Information Technology'),
+(2, 'BSCS', 'Bachelor of Science in Computer Science'),
+(3, 'BSBA', 'Bachelor of Science in Business Administration')
+ON DUPLICATE KEY UPDATE `course_name` = VALUES(`course_name`);
+
+CREATE TABLE IF NOT EXISTS `students` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `student_id` VARCHAR(20) NOT NULL UNIQUE,
+  `first_name` VARCHAR(50) NOT NULL,
+  `last_name` VARCHAR(50) NOT NULL,
+  `email` VARCHAR(100) NOT NULL,
+  `course_id` INT NOT NULL,
+  `major` VARCHAR(100) DEFAULT NULL,
+  `year_level` TINYINT(1) NOT NULL,
+  `status` VARCHAR(20) NOT NULL DEFAULT 'Enrolled',
+  `gpa` VARCHAR(10) DEFAULT '1.75',
+  `remarks` VARCHAR(100) DEFAULT 'Good Standing',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_students_course_idx` (`course_id`),
+  CONSTRAINT `fk_students_course` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `students` (`student_id`, `first_name`, `last_name`, `email`, `course_id`, `major`, `year_level`, `status`, `gpa`, `remarks`) VALUES
+('2026-0101', 'Juan', 'Dela Cruz', 'juan.delacruz@example.com', 1, 'Web Development', 3, 'Enrolled', '1.25', 'Dean\'s Lister'),
+('2026-0102', 'Maria', 'Santos', 'maria.santos@example.com', 2, 'Data Science', 2, 'Enrolled', '1.50', 'Dean\'s Lister'),
+('2026-0103', 'Carlo', 'Reyes', 'carlo.reyes@example.com', 1, 'Network & Security', 1, 'Inactive', '2.50', 'Passed'),
+('2026-0104', 'Ana', 'Lopez', 'ana.lopez@example.com', 3, 'Financial Management', 4, 'Enrolled', '1.75', 'Good Standing')
+ON DUPLICATE KEY UPDATE `status` = VALUES(`status`);

@@ -1,11 +1,11 @@
-    </main>
-  </div>
+<?php
+?>
+</main>
+</div>
 </div>
 
-<!-- Bootstrap 5 Bundle JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- View Student Modal -->
 <div class="modal fade" id="viewStudentModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content dark-modal">
@@ -79,95 +79,159 @@
 </div>
 
 <script>
-function showStudentModal(data) {
-  document.getElementById('modalName').textContent = data.first_name + ' ' + data.last_name;
-  document.getElementById('modalStudentId').textContent = 'ID: ' + data.student_id;
-  document.getElementById('modalCourse').textContent = data.course || 'N/A';
-  document.getElementById('modalMajor').textContent = data.major || 'None';
-  document.getElementById('modalYear').textContent = data.year_formatted || data.year_level;
-  document.getElementById('modalEmail').textContent = data.email || 'N/A';
-  document.getElementById('modalGpa').textContent = data.gpa || '1.75';
-  document.getElementById('modalRemarks').textContent = data.remarks || 'Good Standing';
-  
-  const initials = (data.first_name.charAt(0) + data.last_name.charAt(0)).toUpperCase();
-  document.getElementById('modalAvatar').textContent = initials;
-  
-  const statusBadge = document.getElementById('modalStatusBadge');
-  if ((data.status || '').toLowerCase() === 'enrolled') {
-    statusBadge.innerHTML = '<span class="status-badge badge-enrolled">Enrolled</span>';
-  } else if ((data.status || '').toLowerCase() === 'inactive') {
-    statusBadge.innerHTML = '<span class="status-badge badge-inactive">Inactive</span>';
-  } else {
-    statusBadge.innerHTML = '<span class="status-badge badge-graduated">' + (data.status || 'Active') + '</span>';
-  }
-  
-  document.getElementById('modalEditBtn').href = 'edit.php?id=' + data.id;
-  
-  const modal = new bootstrap.Modal(document.getElementById('viewStudentModal'));
-  modal.show();
-}
+  function showStudentModal(data) {
+    document.getElementById('modalName').textContent = data.first_name + ' ' + data.last_name;
+    document.getElementById('modalStudentId').textContent = 'ID: ' + data.student_id;
+    document.getElementById('modalCourse').textContent = data.course || 'N/A';
+    document.getElementById('modalMajor').textContent = data.major || 'None';
+    document.getElementById('modalYear').textContent = data.year_formatted || data.year_level;
+    document.getElementById('modalEmail').textContent = data.email || 'N/A';
+    document.getElementById('modalGpa').textContent = data.gpa || '1.75';
+    document.getElementById('modalRemarks').textContent = data.remarks || 'Good Standing';
 
-function openGradeModal(data) {
-  document.getElementById('editGradeStudentId').value = data.id;
-  document.getElementById('editGradeStudentName').textContent = data.name;
-  document.getElementById('editGradeStudentIdText').textContent = data.student_id;
-  document.getElementById('editGradeStudentCourse').textContent = data.course;
-  document.getElementById('editGradeStudentYear').textContent = data.year;
-  document.getElementById('editGradeGpaInput').value = data.gpa;
-  
-  const sel = document.getElementById('editGradeRemarksSelect');
-  if (sel) {
-    let matched = false;
-    for (let i = 0; i < sel.options.length; i++) {
-      if (sel.options[i].value.toLowerCase() === (data.remarks || '').toLowerCase()) {
-        sel.selectedIndex = i;
-        matched = true;
-        break;
+    const initials = (data.first_name.charAt(0) + data.last_name.charAt(0)).toUpperCase();
+    document.getElementById('modalAvatar').textContent = initials;
+
+    const statusBadge = document.getElementById('modalStatusBadge');
+    if ((data.status || '').toLowerCase() === 'enrolled') {
+      statusBadge.innerHTML = '<span class="status-badge badge-enrolled">Enrolled</span>';
+    } else if ((data.status || '').toLowerCase() === 'inactive') {
+      statusBadge.innerHTML = '<span class="status-badge badge-inactive">Inactive</span>';
+    } else {
+      statusBadge.innerHTML = '<span class="status-badge badge-graduated">' + (data.status || 'Active') + '</span>';
+    }
+
+    document.getElementById('modalEditBtn').href = 'edit.php?id=' + data.id;
+
+    const modal = new bootstrap.Modal(document.getElementById('viewStudentModal'));
+    modal.show();
+  }
+
+  function openGradeModal(data) {
+    document.getElementById('editGradeStudentId').value = data.id;
+    document.getElementById('editGradeStudentName').textContent = data.name;
+    document.getElementById('editGradeStudentIdText').textContent = data.student_id;
+    document.getElementById('editGradeStudentCourse').textContent = data.course;
+    document.getElementById('editGradeStudentYear').textContent = data.year;
+    document.getElementById('editGradeGpaInput').value = data.gpa;
+
+    const sel = document.getElementById('editGradeRemarksSelect');
+    if (sel) {
+      const parser = document.createElement('textarea');
+      parser.innerHTML = data.remarks || 'Good Standing';
+      const cleanRemarks = parser.value.trim().toLowerCase();
+
+      let matched = false;
+      for (let i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value.trim().toLowerCase() === cleanRemarks) {
+          sel.selectedIndex = i;
+          matched = true;
+          break;
+        }
+      }
+      if (!matched && data.remarks) {
+        const opt = new Option(parser.value, parser.value, true, true);
+        sel.add(opt);
       }
     }
-    if (!matched && data.remarks) {
-      const opt = new Option(data.remarks, data.remarks, true, true);
-      sel.add(opt);
+
+    const modal = new bootstrap.Modal(document.getElementById('editGradeModal'));
+    modal.show();
+  }
+
+  function autoUpdateRemarks(gpaInputId, remarksSelectId) {
+    const gpaInput = document.getElementById(gpaInputId);
+    const sel = document.getElementById(remarksSelectId);
+    if (!gpaInput || !sel) return;
+
+    const rawVal = gpaInput.value.trim();
+    if (rawVal === '') return;
+
+    const gpaVal = parseFloat(rawVal);
+    if (isNaN(gpaVal)) return;
+
+    let targetRemark = "";
+    if (gpaVal >= 1.0 && gpaVal <= 1.50) {
+      targetRemark = "Dean's Lister";
+    } else if (gpaVal > 1.50 && gpaVal <= 2.50) {
+      targetRemark = "Good Standing";
+    } else if (gpaVal > 2.50 && gpaVal <= 3.00) {
+      targetRemark = "Passed";
+    } else if (gpaVal > 3.00 && gpaVal <= 5.00) {
+      targetRemark = "Failed";
+    } else if (gpaVal >= 90.0 && gpaVal <= 100.0) {
+      targetRemark = "Dean's Lister";
+    } else if (gpaVal >= 80.0 && gpaVal < 90.0) {
+      targetRemark = "Good Standing";
+    } else if (gpaVal >= 75.0 && gpaVal < 80.0) {
+      targetRemark = "Passed";
+    } else if (gpaVal > 5.0 && gpaVal < 75.0) {
+      targetRemark = "Failed";
+    }
+
+    if (targetRemark) {
+      let matched = false;
+      for (let i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value.toLowerCase() === targetRemark.toLowerCase()) {
+          sel.selectedIndex = i;
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        const opt = new Option(targetRemark, targetRemark, true, true);
+        sel.add(opt);
+      }
     }
   }
 
-  const modal = new bootstrap.Modal(document.getElementById('editGradeModal'));
-  modal.show();
-}
+  function openEditCourseModal(course) {
+    const idInput = document.getElementById('editCourseId');
+    const codeInput = document.getElementById('editCourseCode');
+    const nameInput = document.getElementById('editCourseName');
+    if (idInput && codeInput && nameInput) {
+      idInput.value = course.id;
+      codeInput.value = course.course_code;
+      nameInput.value = course.course_name;
+      const modalEl = document.getElementById('editCourseModal');
+      if (modalEl) {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+      }
+    }
+  }
 
-// Ensure active styling updates immediately on click in sidebar
-document.querySelectorAll('.sidebar-nav .nav-link-custom').forEach(item => {
-  item.addEventListener('click', function() {
-    document.querySelectorAll('.sidebar-nav .nav-link-custom').forEach(link => link.classList.remove('active'));
-    this.classList.add('active');
+  document.querySelectorAll('.sidebar-nav .nav-link-custom').forEach(item => {
+    item.addEventListener('click', function () {
+      document.querySelectorAll('.sidebar-nav .nav-link-custom').forEach(link => link.classList.remove('active'));
+      this.classList.add('active');
+    });
   });
-});
 
-// Theme Toggle Functionality
-function toggleTheme() {
-  const isLight = document.body.classList.toggle('light-mode');
-  const icon = document.getElementById('themeIcon');
-  if (isLight) {
-    localStorage.setItem('sims-theme', 'light');
-    if (icon) icon.className = 'bi bi-moon-stars-fill';
-  } else {
-    localStorage.setItem('sims-theme', 'dark');
-    if (icon) icon.className = 'bi bi-sun-fill';
+  function toggleTheme() {
+    const isLight = document.body.classList.toggle('light-mode');
+    const icon = document.getElementById('themeIcon');
+    if (isLight) {
+      localStorage.setItem('sims-cici-theme', 'light');
+      if (icon) icon.className = 'bi bi-moon-stars-fill';
+    } else {
+      localStorage.setItem('sims-cici-theme', 'dark');
+      if (icon) icon.className = 'bi bi-sun-fill';
+    }
   }
-}
 
-// Ensure icon matches current theme on load
-document.addEventListener('DOMContentLoaded', function() {
-  const currentTheme = localStorage.getItem('sims-theme');
-  const icon = document.getElementById('themeIcon');
-  if (currentTheme === 'light') {
-    document.body.classList.add('light-mode');
-    if (icon) icon.className = 'bi bi-moon-stars-fill';
-  } else {
-    document.body.classList.remove('light-mode');
-    if (icon) icon.className = 'bi bi-sun-fill';
-  }
-});
+  document.addEventListener('DOMContentLoaded', function () {
+    const currentTheme = localStorage.getItem('sims-cici-theme');
+    const icon = document.getElementById('themeIcon');
+    if (currentTheme === 'light') {
+      document.body.classList.add('light-mode');
+      if (icon) icon.className = 'bi bi-moon-stars-fill';
+    } else {
+      document.body.classList.remove('light-mode');
+      if (icon) icon.className = 'bi bi-sun-fill';
+    }
+  });
 </script>
 </body>
+
 </html>

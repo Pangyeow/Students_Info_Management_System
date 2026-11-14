@@ -6,8 +6,7 @@ if (!in_array($currentTab, ['dashboard', 'students', 'courses', 'grades', 'repor
   $currentTab = 'students';
 }
 
-// Handle Grade Update
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_grade') {
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_grade') {
   $gradeId = (int) ($_POST['id'] ?? 0);
   $gpa = trim($_POST['gpa'] ?? '');
   $remarks = trim($_POST['remarks'] ?? '');
@@ -21,22 +20,109 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
   }
 }
 
-// Metrics
-$totalStudents = (int) ($conn->query("SELECT COUNT(*) AS c FROM students")->fetch_assoc()['c'] ?? 0);
-$enrolledCount = (int) ($conn->query("SELECT COUNT(*) AS c FROM students WHERE status = 'Enrolled'")->fetch_assoc()['c'] ?? 0);
-$coursesCount = (int) ($conn->query("SELECT COUNT(DISTINCT course) AS c FROM students WHERE course != ''")->fetch_assoc()['c'] ?? 0);
-$newThisMonth = (int) ($conn->query("SELECT COUNT(*) AS c FROM students WHERE created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')")->fetch_assoc()['c'] ?? 0);
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_course') {
+  $courseCode = strtoupper(trim($_POST['course_code'] ?? ''));
+  $courseName = trim($_POST['course_name'] ?? '');
 
-// Distinct courses for filter
-$courseListResult = $conn->query("SELECT DISTINCT course FROM students WHERE course != '' ORDER BY course ASC");
-$coursesList = [];
-if ($courseListResult) {
-  while ($cRow = $courseListResult->fetch_assoc()) {
-    $coursesList[] = $cRow['course'];
+  if ($courseCode === '' || $courseName === '') {
+    header("Location: index.php?tab=courses&err=" . urlencode("Both Course Code and Course Name are required."));
+    exit;
+  }
+
+  $chk = $conn->prepare("SELECT id FROM courses WHERE course_code = ?");
+  $chk->bind_param("s", $courseCode);
+  $chk->execute();
+  if ($chk->get_result()->num_rows > 0) {
+    header("Location: index.php?tab=courses&err=" . urlencode("Course code '$courseCode' already exists."));
+    exit;
+  }
+
+  $stmt = $conn->prepare("INSERT INTO courses (course_code, course_name) VALUES (?, ?)");
+  $stmt->bind_param("ss", $courseCode, $courseName);
+  try {
+    $stmt->execute();
+    header("Location: index.php?tab=courses&msg=" . urlencode("Course '$courseCode' added successfully!"));
+    exit;
+  } catch (mysqli_sql_exception $e) {
+    header("Location: index.php?tab=courses&err=" . urlencode("Database error while adding course."));
+    exit;
   }
 }
 
-// Filter and Search parameters
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'edit_course') {
+  $courseId = (int) ($_POST['id'] ?? 0);
+  $courseCode = strtoupper(trim($_POST['course_code'] ?? ''));
+  $courseName = trim($_POST['course_name'] ?? '');
+
+  if ($courseId <= 0 || $courseCode === '' || $courseName === '') {
+    header("Location: index.php?tab=courses&err=" . urlencode("All course fields are required."));
+    exit;
+  }
+
+  $chk = $conn->prepare("SELECT id FROM courses WHERE course_code = ? AND id != ?");
+  $chk->bind_param("si", $courseCode, $courseId);
+  $chk->execute();
+  if ($chk->get_result()->num_rows > 0) {
+    header("Location: index.php?tab=courses&err=" . urlencode("Course code '$courseCode' is already in use by another program."));
+    exit;
+  }
+
+  $stmt = $conn->prepare("UPDATE courses SET course_code = ?, course_name = ? WHERE id = ?");
+  $stmt->bind_param("ssi", $courseCode, $courseName, $courseId);
+  try {
+    $stmt->execute();
+    header("Location: index.php?tab=courses&msg=" . urlencode("Course '$courseCode' updated successfully!"));
+    exit;
+  } catch (mysqli_sql_exception $e) {
+    header("Location: index.php?tab=courses&err=" . urlencode("Database error while updating course."));
+    exit;
+  }
+}
+
+if (($_GET['action'] ?? '') === 'delete_course' || (($_POST['action'] ?? '') === 'delete_course')) {
+  $delId = (int) ($_GET['id'] ?? $_POST['id'] ?? 0);
+  if ($delId > 0) {
+    $cQuery = $conn->prepare("SELECT course_code, course_name FROM courses WHERE id = ?");
+    $cQuery->bind_param("i", $delId);
+    $cQuery->execute();
+    $cRow = $cQuery->get_result()->fetch_assoc();
+    $cCode = $cRow['course_code'] ?? "ID #$delId";
+
+    $countStmt = $conn->prepare("SELECT COUNT(*) AS c FROM students WHERE course_id = ?");
+    $countStmt->bind_param("i", $delId);
+    $countStmt->execute();
+    $studentCount = (int) ($countStmt->get_result()->fetch_assoc()['c'] ?? 0);
+
+    if ($studentCount > 0) {
+      $friendlyErr = "Cannot delete course '$cCode' because $studentCount student(s) are currently enrolled or assigned to it. Please reassign or remove the students first.";
+      header("Location: index.php?tab=courses&err=" . urlencode($friendlyErr));
+      exit;
+    }
+
+    $stmt = $conn->prepare("DELETE FROM courses WHERE id = ?");
+    $stmt->bind_param("i", $delId);
+    try {
+      $stmt->execute();
+      header("Location: index.php?tab=courses&msg=" . urlencode("Course '$cCode' deleted successfully!"));
+      exit;
+    } catch (mysqli_sql_exception $e) {
+      header("Location: index.php?tab=courses&err=" . urlencode("Cannot delete course due to a database constraint."));
+      exit;
+    }
+  }
+}
+
+$totalStudents = (int) ($conn->query("SELECT COUNT(*) AS c FROM students")->fetch_assoc()['c'] ?? 0);
+$enrolledCount = (int) ($conn->query("SELECT COUNT(*) AS c FROM students WHERE status = 'Enrolled'")->fetch_assoc()['c'] ?? 0);
+$coursesCount = (int) ($conn->query("SELECT COUNT(*) AS c FROM courses")->fetch_assoc()['c'] ?? 0);
+$newThisMonth = (int) ($conn->query("SELECT COUNT(*) AS c FROM students WHERE created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')")->fetch_assoc()['c'] ?? 0);
+
+$allCourses = [];
+$coursesRes = $conn->query("SELECT id, course_code, course_name FROM courses ORDER BY course_code ASC");
+if ($coursesRes) {
+  $allCourses = $coursesRes->fetch_all(MYSQLI_ASSOC);
+}
+
 $search = trim($_GET['search'] ?? '');
 $courseFilter = trim($_GET['course'] ?? '');
 $yearFilter = trim($_GET['year'] ?? '');
@@ -46,7 +132,7 @@ $params = [];
 $types = "";
 
 if ($search !== '') {
-  $where[] = "(student_id LIKE ? OR first_name LIKE ? OR last_name LIKE ? OR course LIKE ? OR major LIKE ? OR email LIKE ?)";
+  $where[] = "(s.student_id LIKE ? OR s.first_name LIKE ? OR s.last_name LIKE ? OR c.course_code LIKE ? OR c.course_name LIKE ? OR s.major LIKE ? OR s.email LIKE ?)";
   $like = "%$search%";
   $params[] = $like;
   $params[] = $like;
@@ -54,25 +140,31 @@ if ($search !== '') {
   $params[] = $like;
   $params[] = $like;
   $params[] = $like;
-  $types .= "ssssss";
+  $params[] = $like;
+  $types .= "sssssss";
 }
 
 if ($courseFilter !== '') {
-  $where[] = "course = ?";
-  $params[] = $courseFilter;
-  $types .= "s";
+  if (is_numeric($courseFilter)) {
+    $where[] = "s.course_id = ?";
+    $params[] = (int) $courseFilter;
+    $types .= "i";
+  } else {
+    $where[] = "c.course_code = ?";
+    $params[] = $courseFilter;
+    $types .= "s";
+  }
 }
 
 if ($yearFilter !== '') {
-  $where[] = "year_level = ?";
+  $where[] = "s.year_level = ?";
   $params[] = (int) $yearFilter;
   $types .= "i";
 }
 
 $whereSql = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
 
-// Count for pagination
-$countSql = "SELECT COUNT(*) AS c FROM students $whereSql";
+$countSql = "SELECT COUNT(*) AS c FROM students s JOIN courses c ON s.course_id = c.id $whereSql";
 if (!empty($params)) {
   $countStmt = $conn->prepare($countSql);
   $countStmt->bind_param($types, ...$params);
@@ -82,16 +174,16 @@ if (!empty($params)) {
   $totalFiltered = (int) ($conn->query($countSql)->fetch_assoc()['c'] ?? 0);
 }
 
-// Pagination
+
 $limit = 10;
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $totalPages = max(1, ceil($totalFiltered / $limit));
-if ($page > $totalPages)
+if ($page > $totalPages) {
   $page = $totalPages;
+}
 $offset = ($page - 1) * $limit;
 
-// Fetch students for table
-$querySql = "SELECT * FROM students $whereSql ORDER BY id DESC LIMIT ? OFFSET ?";
+$querySql = "SELECT s.*, c.course_code, c.course_name FROM students s JOIN courses c ON s.course_id = c.id $whereSql ORDER BY s.id DESC LIMIT ? OFFSET ?";
 $fetchParams = $params;
 $fetchParams[] = $limit;
 $fetchParams[] = $offset;
@@ -109,18 +201,19 @@ if ($result) {
   }
 }
 
-// Helper to build filter query string
-function buildQuery($overrides = [])
-{
-  $current = $_GET;
-  foreach ($overrides as $k => $v) {
-    if ($v === null || $v === '') {
-      unset($current[$k]);
-    } else {
-      $current[$k] = $v;
+if (!function_exists('buildQuery')) {
+  function buildQuery($overrides = [])
+  {
+    $current = $_GET;
+    foreach ($overrides as $k => $v) {
+      if ($v === null || $v === '') {
+        unset($current[$k]);
+      } else {
+        $current[$k] = $v;
+      }
     }
+    return '?' . http_build_query($current);
   }
-  return '?' . http_build_query($current);
 }
 
 include "includes/header.php";
@@ -135,11 +228,17 @@ include "includes/header.php";
   </div>
 <?php endif; ?>
 
-<!-- ========================================== -->
-<!-- TAB: DASHBOARD -->
-<!-- ========================================== -->
+<?php if (isset($_GET['err'])): ?>
+  <div
+    class="alert alert-danger alert-dismissible fade show bg-dark text-danger border border-danger border-opacity-25 mb-4"
+    role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i><?= htmlspecialchars($_GET['err']) ?>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+  </div>
+<?php endif; ?>
+
 <?php if ($currentTab === 'dashboard'): ?>
-  <!-- 4 Metrics Cards -->
+
   <div class="metrics-grid">
     <div class="metric-card">
       <div class="metric-label">Total students</div>
@@ -160,7 +259,7 @@ include "includes/header.php";
   </div>
 
   <div class="row g-4">
-    <!-- Recent Students Table -->
+
     <div class="col-lg-7">
       <div class="d-flex align-items-center justify-content-between mb-3">
         <h3 class="section-title fs-5">Recent Students</h3>
@@ -181,14 +280,14 @@ include "includes/header.php";
             </thead>
             <tbody>
               <?php
-              $recent = $conn->query("SELECT * FROM students ORDER BY id DESC LIMIT 5");
+              $recent = $conn->query("SELECT s.*, c.course_code, c.course_name FROM students s JOIN courses c ON s.course_id = c.id ORDER BY s.id DESC LIMIT 5");
               if ($recent && $recent->num_rows > 0):
                 while ($r = $recent->fetch_assoc()):
                   ?>
                   <tr>
                     <td class="text-secondary fw-semibold"><?= htmlspecialchars($r['student_id']) ?></td>
                     <td class="text-white fw-medium"><?= htmlspecialchars($r['first_name'] . ' ' . $r['last_name']) ?></td>
-                    <td><?= htmlspecialchars($r['course']) ?></td>
+                    <td><?= htmlspecialchars($r['course_code']) ?></td>
                     <td><?= renderStatusBadge($r['status']) ?></td>
                   </tr>
                 <?php endwhile; else: ?>
@@ -202,7 +301,7 @@ include "includes/header.php";
       </div>
     </div>
 
-    <!-- Quick Stats & Course Distribution -->
+
     <div class="col-lg-5">
       <div class="d-flex align-items-center justify-content-between mb-3">
         <h3 class="section-title fs-5">Enrollment Distribution</h3>
@@ -212,14 +311,15 @@ include "includes/header.php";
       </div>
       <div class="metric-card p-4">
         <?php
-        $dist = $conn->query("SELECT course, COUNT(*) as c FROM students WHERE course != '' GROUP BY course ORDER BY c DESC LIMIT 4");
+        $dist = $conn->query("SELECT c.course_code, c.course_name, COUNT(s.id) as c FROM courses c LEFT JOIN students s ON s.course_id = c.id GROUP BY c.id, c.course_code, c.course_name ORDER BY c DESC LIMIT 4");
         if ($dist && $dist->num_rows > 0):
           while ($d = $dist->fetch_assoc()):
             $pct = ($totalStudents > 0) ? round(($d['c'] / $totalStudents) * 100) : 0;
             ?>
             <div class="mb-3">
               <div class="d-flex justify-content-between small mb-1">
-                <span class="text-white fw-semibold"><?= htmlspecialchars($d['course']) ?></span>
+                <span class="text-white fw-semibold"><?= htmlspecialchars($d['course_code']) ?> <span
+                    class="text-secondary small fw-normal">(<?= htmlspecialchars($d['course_name']) ?>)</span></span>
                 <span class="text-secondary"><?= $d['c'] ?> students (<?= $pct ?>%)</span>
               </div>
               <div class="progress" style="height: 6px; background-color: #242838;">
@@ -241,32 +341,40 @@ include "includes/header.php";
     </div>
   </div>
 
-  <!-- ========================================== -->
-  <!-- TAB: COURSES -->
-  <!-- ========================================== -->
+
 <?php elseif ($currentTab === 'courses'): ?>
   <div class="section-header-bar">
     <div>
       <h2 class="section-title">Courses Directory</h2>
-      <p class="text-secondary small mb-0">Explore student counts and distribution across academic programs</p>
+      <p class="text-secondary small mb-0">Manage degree programs, academic codes, and student enrollment distribution</p>
     </div>
-    <a href="index.php?tab=students" class="btn btn-secondary btn-sm">
-      <i class="bi bi-people me-1"></i> View Students List
-    </a>
+    <div class="section-actions">
+      <a href="index.php?tab=students" class="btn btn-secondary btn-sm">
+        <i class="bi bi-people me-1"></i> View Students List
+      </a>
+      <button type="button" class="btn-add-student" data-bs-toggle="modal" data-bs-target="#addCourseModal">
+        <i class="bi bi-journal-plus"></i> Add course
+      </button>
+    </div>
   </div>
 
   <?php
-  $courseSummary = $conn->query("SELECT course, COUNT(*) as total, 
-                                  SUM(CASE WHEN status = 'Enrolled' THEN 1 ELSE 0 END) as enrolled,
-                                  SUM(CASE WHEN status = 'Inactive' THEN 1 ELSE 0 END) as inactive
-                                 FROM students WHERE course != '' GROUP BY course ORDER BY total DESC");
+  $courseSummary = $conn->query("SELECT c.id, c.course_code, c.course_name, 
+                                  COUNT(s.id) as total, 
+                                  SUM(CASE WHEN s.status = 'Enrolled' THEN 1 ELSE 0 END) as enrolled,
+                                  SUM(CASE WHEN s.status = 'Inactive' THEN 1 ELSE 0 END) as inactive
+                                 FROM courses c
+                                 LEFT JOIN students s ON s.course_id = c.id
+                                 GROUP BY c.id, c.course_code, c.course_name
+                                 ORDER BY c.course_code ASC");
   ?>
   <div class="table-card mb-4">
     <div class="table-responsive">
       <table class="custom-table">
         <thead>
           <tr>
-            <th>Course Code / Name</th>
+            <th>Course Code</th>
+            <th>Program / Degree Name</th>
             <th>Total Students</th>
             <th>Enrolled</th>
             <th>Inactive</th>
@@ -277,22 +385,39 @@ include "includes/header.php";
           <?php if ($courseSummary && $courseSummary->num_rows > 0):
             while ($c = $courseSummary->fetch_assoc()): ?>
               <tr>
-                <td class="fw-semibold text-white fs-6">
-                  <i class="bi bi-journal-text text-primary me-2"></i><?= htmlspecialchars($c['course']) ?>
+                <td class="fw-bold text-white fs-6">
+                  <span class="badge bg-dark border border-secondary text-white px-2 py-1">
+                    <i class="bi bi-journal-code text-primary me-1"></i><?= htmlspecialchars($c['course_code']) ?>
+                  </span>
                 </td>
+                <td class="text-white fw-medium"><?= htmlspecialchars($c['course_name']) ?></td>
                 <td class="fw-bold text-white"><?= (int) $c['total'] ?></td>
                 <td><span class="status-badge badge-enrolled"><?= (int) $c['enrolled'] ?> Enrolled</span></td>
                 <td><span class="status-badge badge-inactive"><?= (int) $c['inactive'] ?> Inactive</span></td>
                 <td style="text-align: right; padding-right: 24px;">
-                  <a href="index.php?tab=students&course=<?= urlencode($c['course']) ?>"
-                    class="btn btn-sm btn-outline-primary" style="font-size: 0.8rem;">
-                    <i class="bi bi-people me-1"></i> Filter Students
-                  </a>
+                  <div class="action-btns-group justify-content-end">
+                    <a href="index.php?tab=students&course=<?= urlencode($c['course_code']) ?>" class="action-btn view-btn"
+                      title="View Students in <?= htmlspecialchars($c['course_code']) ?>">
+                      <i class="bi bi-people"></i>
+                    </a>
+                    <button type="button" class="action-btn edit-btn" title="Edit Course" onclick='openEditCourseModal(<?= htmlspecialchars(json_encode([
+                      "id" => $c["id"],
+                      "course_code" => $c["course_code"],
+                      "course_name" => $c["course_name"]
+                    ], JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8') ?>)'>
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <a href="index.php?tab=courses&action=delete_course&id=<?= $c['id'] ?>" class="action-btn delete-btn"
+                      title="Delete Course"
+                      onclick="return confirm('Are you sure you want to delete course <?= htmlspecialchars(addslashes($c['course_code'])) ?>?');">
+                      <i class="bi bi-trash3"></i>
+                    </a>
+                  </div>
                 </td>
               </tr>
             <?php endwhile; else: ?>
             <tr>
-              <td colspan="5" class="text-center py-5 text-secondary">No courses found.</td>
+              <td colspan="6" class="text-center py-5 text-secondary">No academic courses registered yet.</td>
             </tr>
           <?php endif; ?>
         </tbody>
@@ -300,9 +425,7 @@ include "includes/header.php";
     </div>
   </div>
 
-  <!-- ========================================== -->
-  <!-- TAB: GRADES -->
-  <!-- ========================================== -->
+
 <?php elseif ($currentTab === 'grades'): ?>
   <div class="section-header-bar">
     <div>
@@ -310,7 +433,7 @@ include "includes/header.php";
       <p class="text-secondary small mb-0">Manage, evaluate, and update student grades and academic performance</p>
     </div>
     <div class="section-actions">
-      <!-- Course & Year Filter Form -->
+
       <form id="gradeFilterForm" method="get" class="d-flex align-items-center gap-2 m-0">
         <input type="hidden" name="tab" value="grades">
         <?php if (!empty($search)): ?>
@@ -319,9 +442,9 @@ include "includes/header.php";
 
         <select name="course" class="custom-select-dark" onchange="document.getElementById('gradeFilterForm').submit()">
           <option value="">All courses</option>
-          <?php foreach ($coursesList as $c): ?>
-            <option value="<?= htmlspecialchars($c) ?>" <?= ($courseFilter === $c) ? 'selected' : '' ?>>
-              <?= htmlspecialchars($c) ?>
+          <?php foreach ($allCourses as $c): ?>
+            <option value="<?= htmlspecialchars($c['course_code']) ?>" <?= ($courseFilter === $c['course_code'] || $courseFilter === (string) $c['id']) ? 'selected' : '' ?>>
+              <?= htmlspecialchars($c['course_code']) ?>
             </option>
           <?php endforeach; ?>
         </select>
@@ -356,12 +479,12 @@ include "includes/header.php";
           <?php if (!empty($students)):
             foreach ($students as $row):
               $studentGpa = !empty($row['gpa']) ? htmlspecialchars($row['gpa']) : '1.75';
-              $studentRemarks = !empty($row['remarks']) ? htmlspecialchars($row['remarks']) : 'Good Standing';
+              $studentRemarks = !empty($row['remarks']) ? $row['remarks'] : 'Good Standing';
               ?>
               <tr>
                 <td class="text-secondary fw-semibold"><?= htmlspecialchars($row['student_id']) ?></td>
                 <td class="text-white fw-medium"><?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?></td>
-                <td><?= htmlspecialchars($row['course']) ?></td>
+                <td><?= htmlspecialchars($row['course_code']) ?></td>
                 <td><?= formatYearLevel($row['year_level']) ?></td>
                 <td>
                   <span class="badge bg-dark text-white border border-secondary px-2 py-1 fs-6 fw-bold">
@@ -371,15 +494,15 @@ include "includes/header.php";
                 <td><?= renderRemarksBadge($studentRemarks) ?></td>
                 <td><?= renderStatusBadge($row['status'] ?? 'Enrolled') ?></td>
                 <td style="text-align: right; padding-right: 24px;">
-                  <button type="button" class="btn btn-sm btn-outline-primary" style="font-size: 0.825rem;" onclick='openGradeModal(<?= json_encode([
+                  <button type="button" class="btn btn-sm btn-outline-primary" style="font-size: 0.825rem;" onclick='openGradeModal(<?= htmlspecialchars(json_encode([
                     "id" => $row["id"],
                     "student_id" => $row["student_id"],
                     "name" => $row["first_name"] . " " . $row["last_name"],
-                    "course" => $row["course"],
+                    "course" => $row["course_code"],
                     "year" => formatYearLevel($row["year_level"]),
-                    "gpa" => $studentGpa,
-                    "remarks" => $studentRemarks
-                  ]) ?>)'>
+                    "gpa" => $row["gpa"] ?? "1.75",
+                    "remarks" => html_entity_decode($row["remarks"] ?? "Good Standing", ENT_QUOTES, "UTF-8")
+                  ], JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, "UTF-8") ?>)'>
                     <i class="bi bi-pencil-square me-1"></i> Edit Grade
                   </button>
                 </td>
@@ -393,7 +516,7 @@ include "includes/header.php";
       </table>
     </div>
 
-    <!-- Pagination for Grades -->
+
     <div class="table-footer">
       <p class="showing-text">
         <?php if ($totalFiltered > 0): ?>
@@ -424,9 +547,7 @@ include "includes/header.php";
     </div>
   </div>
 
-  <!-- ========================================== -->
-  <!-- TAB: REPORTS -->
-  <!-- ========================================== -->
+
 <?php elseif ($currentTab === 'reports'): ?>
   <div class="section-header-bar">
     <div>
@@ -458,7 +579,7 @@ include "includes/header.php";
       <div class="metric-card">
         <div class="metric-label">Active Degree Programs</div>
         <div class="metric-value"><?= $coursesCount ?></div>
-        <div class="text-secondary small mt-2">Programs with registered students</div>
+        <div class="text-secondary small mt-2">Programs configured in courses table</div>
       </div>
     </div>
   </div>
@@ -495,18 +616,15 @@ include "includes/header.php";
     </div>
   </div>
 
-  <!-- ========================================== -->
-  <!-- TAB: STUDENTS (Default / Reference Photo) -->
-  <!-- ========================================== -->
-<?php else: ?>
-  <!-- 4 Metrics Cards matching the reference photo -->
 
-  <!-- Section Header with Title, Filters and Add Button -->
+<?php else: ?>
+
   <div class="section-header-bar">
     <h2 class="section-title">Students</h2>
 
+
     <div class="section-actions">
-      <!-- Course & Year Filter Form -->
+
       <form id="filterForm" method="get" class="d-flex align-items-center gap-2 m-0">
         <input type="hidden" name="tab" value="students">
         <?php if (!empty($search)): ?>
@@ -515,14 +633,14 @@ include "includes/header.php";
 
         <select name="course" class="custom-select-dark" onchange="document.getElementById('filterForm').submit()">
           <option value="">All courses</option>
-          <?php foreach ($coursesList as $c): ?>
-            <option value="<?= htmlspecialchars($c) ?>" <?= ($courseFilter === $c) ? 'selected' : '' ?>>
-              <?= htmlspecialchars($c) ?>
+          <?php foreach ($allCourses as $c): ?>
+            <option value="<?= htmlspecialchars($c['course_code']) ?>" <?= ($courseFilter === $c['course_code'] || $courseFilter === (string) $c['id']) ? 'selected' : '' ?>>
+              <?= htmlspecialchars($c['course_code']) ?>
             </option>
           <?php endforeach; ?>
         </select>
 
-        <!-- Year Filter -->
+
         <select name="year" class="custom-select-dark" onchange="document.getElementById('filterForm').submit()">
           <option value="">All years</option>
           <option value="1" <?= ($yearFilter === '1') ? 'selected' : '' ?>>1st Year</option>
@@ -532,14 +650,14 @@ include "includes/header.php";
         </select>
       </form>
 
-      <!-- Add Student Button -->
+
       <a href="add.php" class="btn-add-student" data-bs-toggle="modal" data-bs-target="#addStudentModal">
         <i class="bi bi-person-plus-fill"></i> Add student
       </a>
     </div>
   </div>
 
-  <!-- Students Table Card -->
+
   <div class="table-card">
     <div class="table-responsive">
       <table class="custom-table">
@@ -549,6 +667,7 @@ include "includes/header.php";
             <th>Name</th>
             <th>Course</th>
             <th>Year</th>
+            <th>Academic Standing</th>
             <th>Status</th>
             <th style="text-align: right; padding-right: 24px;">Actions</th>
           </tr>
@@ -561,33 +680,32 @@ include "includes/header.php";
                 <td class="fw-medium text-white">
                   <?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?>
                 </td>
-                <td><?= htmlspecialchars($row['course']) ?></td>
+                <td><?= htmlspecialchars($row['course_code']) ?></td>
                 <td><?= formatYearLevel($row['year_level']) ?></td>
+                <td><?= renderRemarksBadge($row['remarks'] ?? 'Good Standing') ?></td>
                 <td><?= renderStatusBadge($row['status'] ?? 'Enrolled') ?></td>
                 <td style="text-align: right; padding-right: 24px;">
                   <div class="action-btns-group justify-content-end">
-                    <!-- View Icon -->
-                    <button type="button" class="action-btn view-btn" title="View Details" onclick='showStudentModal(<?= json_encode([
+                    <button type="button" class="action-btn view-btn" title="View Details" onclick='showStudentModal(<?= htmlspecialchars(json_encode([
                       "id" => $row["id"],
                       "student_id" => $row["student_id"],
                       "first_name" => $row["first_name"],
                       "last_name" => $row["last_name"],
                       "email" => $row["email"],
-                      "course" => $row["course"],
+                      "course" => $row["course_code"] . " - " . $row["course_name"],
                       "major" => $row["major"] ?? "",
                       "year_level" => $row["year_level"],
                       "year_formatted" => formatYearLevel($row["year_level"]),
                       "status" => $row["status"] ?? "Enrolled",
                       "gpa" => $row["gpa"] ?? "1.75",
-                      "remarks" => $row["remarks"] ?? "Good Standing"
-                    ]) ?>)'>
+                      "remarks" => html_entity_decode($row["remarks"] ?? "Good Standing", ENT_QUOTES, "UTF-8")
+                    ], JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, "UTF-8") ?>)'>
                       <i class="bi bi-eye"></i>
                     </button>
-                    <!-- Edit Icon -->
-                    <a href="edit.php?id=<?= $row['id'] ?>" class="action-btn edit-btn" title="Edit Student">
+                    <a href="edit.php?id=<?= $row['id'] ?>&tab=students" class="action-btn edit-btn" title="Edit Student">
                       <i class="bi bi-pencil"></i>
                     </a>
-                    <!-- Delete Icon -->
+
                     <a href="delete.php?id=<?= $row['id'] ?>" class="action-btn delete-btn" title="Delete Student"
                       onclick="return confirm('Are you sure you want to delete <?= htmlspecialchars(addslashes($row['first_name'] . ' ' . $row['last_name'])) ?>?');">
                       <i class="bi bi-trash3"></i>
@@ -598,7 +716,7 @@ include "includes/header.php";
             <?php endforeach; ?>
           <?php else: ?>
             <tr>
-              <td colspan="6" class="text-center py-5 text-secondary">
+              <td colspan="7" class="text-center py-5 text-secondary">
                 <i class="bi bi-inbox fs-3 d-block mb-2 text-muted"></i>
                 No students found matching your criteria.
               </td>
@@ -608,7 +726,7 @@ include "includes/header.php";
       </table>
     </div>
 
-    <!-- Pagination & Showing count footer -->
+
     <div class="table-footer">
       <p class="showing-text">
         <?php if ($totalFiltered > 0): ?>
@@ -620,11 +738,11 @@ include "includes/header.php";
       </p>
 
       <div class="pagination-group">
-        <!-- Prev -->
+
         <a href="<?= ($page > 1) ? buildQuery(['page' => $page - 1]) : '#' ?>"
           class="page-btn <?= ($page <= 1) ? 'disabled' : '' ?>">Prev</a>
 
-        <!-- Page Numbers -->
+
         <?php for ($p = 1; $p <= $totalPages; $p++): ?>
           <?php if ($p == 1 || $p == $totalPages || abs($p - $page) <= 2): ?>
             <a href="<?= buildQuery(['page' => $p]) ?>" class="page-btn <?= ($p === $page) ? 'active' : '' ?>">
@@ -635,7 +753,7 @@ include "includes/header.php";
           <?php endif; ?>
         <?php endfor; ?>
 
-        <!-- Next -->
+
         <a href="<?= ($page < $totalPages) ? buildQuery(['page' => $page + 1]) : '#' ?>"
           class="page-btn <?= ($page >= $totalPages) ? 'disabled' : '' ?>">Next</a>
       </div>
@@ -643,7 +761,7 @@ include "includes/header.php";
   </div>
 <?php endif; ?>
 
-<!-- Modal: Quick Add Student -->
+
 <div class="modal fade" id="addStudentModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content dark-modal">
@@ -684,14 +802,20 @@ include "includes/header.php";
             </div>
             <div class="col-md-6">
               <label class="dark-label">Course <span class="text-danger">*</span></label>
-              <input type="text" name="course" class="form-control dark-input" placeholder="e.g. BSIT, BSCS, BSBA"
-                required>
+              <select name="course_id" class="form-select dark-select" required>
+                <option value="">Select course...</option>
+                <?php foreach ($allCourses as $c): ?>
+                  <option value="<?= $c['id'] ?>">
+                    <?= htmlspecialchars($c['course_code']) ?> - <?= htmlspecialchars($c['course_name']) ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
             </div>
             <div class="col-md-6">
               <label class="dark-label">Major</label>
               <input type="text" name="major" class="form-control dark-input" placeholder="e.g. Web Development">
             </div>
-            <div class="col-md-12">
+            <div class="col-md-6">
               <label class="dark-label">Year Level <span class="text-danger">*</span></label>
               <select name="year_level" class="form-select dark-select" required>
                 <option value="">Select year level...</option>
@@ -699,6 +823,23 @@ include "includes/header.php";
                 <option value="2">2nd Year</option>
                 <option value="3">3rd Year</option>
                 <option value="4">4th Year</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="dark-label">Grade / GPA</label>
+              <input type="text" name="gpa" id="modalAddGpa" class="form-control dark-input" placeholder="e.g. 1.75"
+                value="1.75" oninput="autoUpdateRemarks('modalAddGpa', 'modalAddRemarks')"
+                onchange="autoUpdateRemarks('modalAddGpa', 'modalAddRemarks')">
+            </div>
+            <div class="col-md-12">
+              <label class="dark-label">Academic Remarks / Standing</label>
+              <select name="remarks" id="modalAddRemarks" class="form-select dark-select">
+                <option value="Dean's Lister">Dean's Lister</option>
+                <option value="Good Standing" selected>Good Standing</option>
+                <option value="Passed">Passed</option>
+                <option value="No Credits">No Credits</option>
+                <option value="Incomplete">Incomplete</option>
+                <option value="Failed">Failed</option>
               </select>
             </div>
           </div>
@@ -714,7 +855,76 @@ include "includes/header.php";
   </div>
 </div>
 
-<!-- Modal: Edit Grade -->
+<div class="modal fade" id="addCourseModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content dark-modal">
+      <div class="modal-header dark-modal-header">
+        <h5 class="modal-title text-white fs-6">
+          <i class="bi bi-journal-plus me-2 text-primary"></i>Add Academic Course
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="index.php?tab=courses" method="post">
+        <input type="hidden" name="action" value="add_course">
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label class="dark-label">Course Code <span class="text-danger">*</span></label>
+            <input type="text" name="course_code" class="form-control dark-input" placeholder="e.g. BSIT, BSCS, BSHM"
+              required maxlength="20">
+            <div class="form-text text-secondary small">Unique abbreviated code for the program.</div>
+          </div>
+          <div class="mb-3">
+            <label class="dark-label">Course / Program Name <span class="text-danger">*</span></label>
+            <input type="text" name="course_name" class="form-control dark-input"
+              placeholder="e.g. Bachelor of Science in Information Technology" required maxlength="100">
+          </div>
+        </div>
+        <div class="modal-footer dark-modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm px-3">
+            <i class="bi bi-check2 me-1"></i> Save Course
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="editCourseModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content dark-modal">
+      <div class="modal-header dark-modal-header">
+        <h5 class="modal-title text-white fs-6">
+          <i class="bi bi-pencil-square me-2 text-primary"></i>Edit Academic Course
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="index.php?tab=courses" method="post">
+        <input type="hidden" name="action" value="edit_course">
+        <input type="hidden" name="id" id="editCourseId">
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label class="dark-label">Course Code <span class="text-danger">*</span></label>
+            <input type="text" name="course_code" id="editCourseCode" class="form-control dark-input" required
+              maxlength="20">
+          </div>
+          <div class="mb-3">
+            <label class="dark-label">Course / Program Name <span class="text-danger">*</span></label>
+            <input type="text" name="course_name" id="editCourseName" class="form-control dark-input" required
+              maxlength="100">
+          </div>
+        </div>
+        <div class="modal-footer dark-modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm px-3">
+            <i class="bi bi-check2 me-1"></i> Update Course
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <div class="modal fade" id="editGradeModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content dark-modal">
@@ -724,7 +934,7 @@ include "includes/header.php";
         </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <form action="index.php" method="post">
+      <form action="index.php?tab=grades" method="post">
         <input type="hidden" name="action" value="update_grade">
         <input type="hidden" name="id" id="editGradeStudentId">
         <div class="modal-body p-4">
@@ -742,8 +952,11 @@ include "includes/header.php";
           <div class="mb-3">
             <label class="dark-label">Grade / GPA <span class="text-danger">*</span></label>
             <input type="text" name="gpa" id="editGradeGpaInput" class="form-control dark-input"
-              placeholder="e.g. 1.25, 1.50, 88.5" required>
-            <div class="form-text text-secondary small">Enter GPA (e.g. 1.00 - 3.00) or Numerical Grade.</div>
+              placeholder="e.g. 1.25, 1.50, 88.5"
+              oninput="autoUpdateRemarks('editGradeGpaInput', 'editGradeRemarksSelect')"
+              onchange="autoUpdateRemarks('editGradeGpaInput', 'editGradeRemarksSelect')" required>
+            <div class="form-text text-secondary small">Changing GPA updates standing automatically, or select your
+              preferred standing below.</div>
           </div>
 
           <div class="mb-3">
@@ -768,5 +981,15 @@ include "includes/header.php";
     </div>
   </div>
 </div>
+
+<script>
+  function openEditCourseModal(course) {
+    document.getElementById('editCourseId').value = course.id;
+    document.getElementById('editCourseCode').value = course.course_code;
+    document.getElementById('editCourseName').value = course.course_name;
+    const modal = new bootstrap.Modal(document.getElementById('editCourseModal'));
+    modal.show();
+  }
+</script>
 
 <?php include "includes/footer.php"; ?>

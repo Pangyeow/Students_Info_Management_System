@@ -8,36 +8,52 @@ if ($id <= 0) {
   exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$coursesList = [];
+$cRes = $conn->query("SELECT id, course_code, course_name FROM courses ORDER BY course_code ASC");
+if ($cRes) {
+  $coursesList = $cRes->fetch_all(MYSQLI_ASSOC);
+}
+
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
   $student_id = trim($_POST['student_id'] ?? '');
   $first_name = trim($_POST['first_name'] ?? '');
   $last_name = trim($_POST['last_name'] ?? '');
   $email = trim($_POST['email'] ?? '');
-  $course = trim($_POST['course'] ?? '');
+  $course_id = (int) ($_POST['course_id'] ?? 0);
   $major = trim($_POST['major'] ?? '');
   $year_level = (int) ($_POST['year_level'] ?? 0);
   $status = trim($_POST['status'] ?? 'Enrolled');
   $gpa = trim($_POST['gpa'] ?? '1.75');
   $remarks = trim($_POST['remarks'] ?? 'Good Standing');
+  $retTab = trim($_POST['ret_tab'] ?? $_GET['tab'] ?? '');
 
-  if ($student_id === '' || $first_name === '' || $last_name === '' || $email === '' || $course === '' || $year_level <= 0) {
+  if ($student_id === '' || $first_name === '' || $last_name === '' || $email === '' || $course_id <= 0 || $year_level <= 0) {
     $error = "Please fill in all required fields.";
   } else {
-    $stmt = $conn->prepare("UPDATE students SET student_id=?, first_name=?, last_name=?, email=?, course=?, major=?, year_level=?, status=?, gpa=?, remarks=? WHERE id=?");
-    $stmt->bind_param("ssssssisssi", $student_id, $first_name, $last_name, $email, $course, $major, $year_level, $status, $gpa, $remarks, $id);
+    $chkStmt = $conn->prepare("SELECT id FROM courses WHERE id = ?");
+    $chkStmt->bind_param("i", $course_id);
+    $chkStmt->execute();
+    $courseExists = $chkStmt->get_result()->num_rows > 0;
 
-    try {
-      $stmt->execute();
-      header("Location: index.php?msg=" . urlencode("Student updated successfully!"));
-      exit;
-    } catch (mysqli_sql_exception $e) {
-      $error = "Could not update. Student ID may already exist.";
+    if (!$courseExists) {
+      $error = "Selected course is invalid or does not exist.";
+    } else {
+      $stmt = $conn->prepare("UPDATE students SET student_id=?, first_name=?, last_name=?, email=?, course_id=?, major=?, year_level=?, status=?, gpa=?, remarks=? WHERE id=?");
+      $stmt->bind_param("ssssisisssi", $student_id, $first_name, $last_name, $email, $course_id, $major, $year_level, $status, $gpa, $remarks, $id);
+
+      try {
+        $stmt->execute();
+        $targetUrl = "index.php?" . ($retTab ? "tab=" . urlencode($retTab) . "&" : "") . "msg=" . urlencode("Student updated successfully!");
+        header("Location: " . $targetUrl);
+        exit;
+      } catch (mysqli_sql_exception $e) {
+        $error = "Could not update. Student ID may already exist or input violates database constraints.";
+      }
     }
   }
 }
 
-// Fetch existing student
-$stmt = $conn->prepare("SELECT * FROM students WHERE id = ?");
+$stmt = $conn->prepare("SELECT s.*, c.course_code, c.course_name FROM students s LEFT JOIN courses c ON s.course_id = c.id WHERE s.id = ?");
 $stmt->bind_param("i", $id);
 $stmt->execute();
 $s = $stmt->get_result()->fetch_assoc();
@@ -70,6 +86,7 @@ include "includes/header.php";
 
       <form method="post">
         <input type="hidden" name="id" value="<?= $s['id'] ?>">
+        <input type="hidden" name="ret_tab" value="<?= htmlspecialchars($_GET['tab'] ?? '') ?>">
 
         <div class="row g-3">
           <div class="col-md-6">
@@ -103,8 +120,14 @@ include "includes/header.php";
           </div>
           <div class="col-md-6">
             <label class="dark-label">Course <span class="text-danger">*</span></label>
-            <input type="text" name="course" class="form-control dark-input"
-              value="<?= htmlspecialchars($s['course']) ?>" required>
+            <select name="course_id" class="form-select dark-select" required>
+              <option value="">Select course...</option>
+              <?php foreach ($coursesList as $c): ?>
+                <option value="<?= $c['id'] ?>" <?= ((int) $s['course_id'] === (int) $c['id']) ? 'selected' : '' ?>>
+                  <?= htmlspecialchars($c['course_code']) ?> - <?= htmlspecialchars($c['course_name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
           </div>
           <div class="col-md-6">
             <label class="dark-label">Major</label>
@@ -123,18 +146,27 @@ include "includes/header.php";
           </div>
           <div class="col-md-6">
             <label class="dark-label">Grade / GPA</label>
-            <input type="text" name="gpa" class="form-control dark-input"
-              value="<?= htmlspecialchars($s['gpa'] ?? '1.75') ?>" placeholder="e.g. 1.25">
+            <input type="text" name="gpa" id="editStudentGpa" class="form-control dark-input"
+              value="<?= htmlspecialchars($s['gpa'] ?? '1.75') ?>" placeholder="e.g. 1.25"
+              oninput="autoUpdateRemarks('editStudentGpa', 'editStudentRemarks')"
+              onchange="autoUpdateRemarks('editStudentGpa', 'editStudentRemarks')">
+            <div class="form-text text-secondary small">Changing GPA updates remarks automatically, or select below.
+            </div>
           </div>
           <div class="col-md-6">
-            <label class="dark-label">Academic Remarks / Standing</label>
-            <select name="remarks" class="form-select dark-select">
+            <label class="dark-label">Academic Remarks / Standing <span class="text-danger">*</span></label>
+            <select name="remarks" id="editStudentRemarks" class="form-select dark-select" required>
               <?php
               $opts = ["Dean's Lister", "Good Standing", "Passed", "No Credits", "Incomplete", "Failed"];
-              $currR = $s['remarks'] ?? 'Good Standing';
+              $currR = trim(html_entity_decode($s['remarks'] ?? 'Good Standing', ENT_QUOTES, 'UTF-8'));
+              if (!empty($currR) && !in_array($currR, $opts)) {
+                $opts[] = $currR;
+              }
               foreach ($opts as $opt):
                 ?>
-                <option value="<?= $opt ?>" <?= (strcasecmp($currR, $opt) === 0) ? 'selected' : '' ?>><?= $opt ?></option>
+                <option value="<?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?>" <?= (strcasecmp($currR, $opt) === 0) ? 'selected' : '' ?>>
+                  <?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?>
+                </option>
               <?php endforeach; ?>
             </select>
           </div>
