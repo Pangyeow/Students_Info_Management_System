@@ -2,7 +2,7 @@
 
 A web-based CRUD application for managing students, courses, and grades, built with **PHP**, **MySQL**, **HTML**, **CSS**, and **Bootstrap 5**.
 
-**Live demo:** _add your InfinityFree URL here_
+**Live demo:** maniellalocsin.infinityfreeapp.com
 
 ---
 
