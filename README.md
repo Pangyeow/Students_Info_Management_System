@@ -113,4 +113,4 @@ sims/
 ---
 
 ## Author
-_Your name_: Final Project, Web Systems Technologies (PHP and MySQL Development)
+Ma.Maniella Locsin BSIT 3A-SD: Final Project, Web Systems Technologies (PHP and MySQL Development)
