@@ -21,7 +21,7 @@ $searchVal = htmlspecialchars($_GET['search'] ?? '');
   <title>SIMS CICI - Student Information Management System</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  <link href="assets/css/style.css" rel="stylesheet">
+  <link href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/../assets/css/style.css') ?>" rel="stylesheet">
   <script>
     (function () {
       const savedTheme = localStorage.getItem('sims-cici-theme');
@@ -47,7 +47,7 @@ $searchVal = htmlspecialchars($_GET['search'] ?? '');
             <div class="brand-icon">
               <i class="bi bi-grid-fill"></i>
             </div>
-            <span class="brand-title">SIMS CICI</span>
+            <span class="brand-title d-none d-lg-inline-block">SIMS CICI</span>
           </a>
 
           <ul class="navbar-nav flex-column sidebar-nav">
