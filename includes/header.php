@@ -40,14 +40,27 @@ $searchVal = htmlspecialchars($_GET['search'] ?? '');
 <body>
 
   <div class="app-container">
-    <nav class="navbar navbar-expand-lg app-sidebar flex-column align-items-stretch" aria-label="Main Navigation">
-      <div class="d-flex flex-column h-100 w-100 justify-content-between sidebar-inner">
-        <div>
-          <a class="navbar-brand brand-wrapper" href="index.php?tab=students" aria-label="SIMS CICI">
+    <!-- Offcanvas Navigation Sidebar for Mobile & Tablet / Static for Desktop -->
+    <nav class="offcanvas-lg offcanvas-start app-sidebar navbar flex-column align-items-stretch" tabindex="-1" id="sidebarMenu" aria-label="Main Navigation">
+      <!-- Offcanvas Header for Mobile/Tablet only -->
+      <div class="offcanvas-header d-lg-none d-flex align-items-center justify-content-between p-3 border-bottom border-subtle">
+        <a class="navbar-brand brand-wrapper p-0 m-0" href="index.php?tab=students" aria-label="SIMS CICI">
+          <div class="brand-icon">
+            <i class="bi bi-grid-fill"></i>
+          </div>
+          <span class="brand-title">SIMS CICI</span>
+        </a>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Close"></button>
+      </div>
+
+      <div class="offcanvas-body d-flex flex-column h-100 w-100 justify-content-between p-0">
+        <div class="w-100 p-3 p-lg-0">
+          <!-- Desktop brand wrapper (hidden on mobile/tablet since offcanvas-header has it) -->
+          <a class="navbar-brand brand-wrapper d-none d-lg-flex" href="index.php?tab=students" aria-label="SIMS CICI">
             <div class="brand-icon">
               <i class="bi bi-grid-fill"></i>
             </div>
-            <span class="brand-title d-none d-lg-inline-block">SIMS CICI</span>
+            <span class="brand-title">SIMS CICI</span>
           </a>
 
           <ul class="navbar-nav flex-column sidebar-nav">
@@ -98,12 +111,17 @@ $searchVal = htmlspecialchars($_GET['search'] ?? '');
 
     <div class="app-main">
       <header class="top-bar">
-        <a class="mobile-brand" href="index.php?tab=students" aria-label="SIMS CICI Home">
-          <div class="brand-icon">
-            <i class="bi bi-grid-fill"></i>
-          </div>
-          <span class="brand-title">SIMS CICI</span>
-        </a>
+        <div class="top-bar-left d-flex align-items-center gap-2">
+          <button class="hamburger-btn d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-label="Toggle navigation">
+            <i class="bi bi-list"></i>
+          </button>
+          <a class="mobile-brand d-lg-none" href="index.php?tab=students" aria-label="SIMS CICI">
+            <div class="brand-icon">
+              <i class="bi bi-grid-fill"></i>
+            </div>
+            <span class="brand-title">SIMS CICI</span>
+          </a>
+        </div>
 
         <form class="search-box-wrapper" method="get" action="index.php" role="search">
           <i class="bi bi-search"></i>

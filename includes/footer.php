@@ -205,6 +205,11 @@
     item.addEventListener('click', function () {
       document.querySelectorAll('.sidebar-nav .nav-link-custom').forEach(link => link.classList.remove('active'));
       this.classList.add('active');
+      const sidebarMenu = document.getElementById('sidebarMenu');
+      if (sidebarMenu && window.bootstrap && bootstrap.Offcanvas) {
+        const instance = bootstrap.Offcanvas.getInstance(sidebarMenu);
+        if (instance) instance.hide();
+      }
     });
   });
 

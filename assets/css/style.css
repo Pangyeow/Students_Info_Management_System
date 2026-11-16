@@ -236,6 +236,37 @@ body {
   border-color: rgba(250, 204, 21, 0.2);
 }
 
+.hamburger-btn {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  color: var(--text-main);
+  padding: 6px 10px;
+  font-size: 1.35rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hamburger-btn:hover {
+  background-color: rgba(83, 28, 34, 0.4);
+  border-color: var(--c-taupe);
+  color: #ffffff;
+}
+
+body.light-mode .hamburger-btn {
+  border-color: #E7D8CA;
+  color: #220707;
+}
+
+body.light-mode .hamburger-btn:hover {
+  background-color: #f7eee4;
+  border-color: #531C22;
+}
+
 .notification-btn {
   background: transparent;
   border: 1px solid transparent;
@@ -689,210 +720,51 @@ body.light-mode .alert-success {
 }
 
 /* ========================================================
-   RESPONSIVE DESIGN: TABLET & MOBILE
+   RESPONSIVE DESIGN: TABLET & MOBILE (HAMBURGER NAVIGATION)
    ======================================================== */
 
-/* Tablet Viewport (768px to 991.98px)
-   - Collapses sidebar to an icon-only vertical bar
-   - Brand title and text labels hidden
-   - Metrics grid arranged in 2 columns
+/* Desktop Viewport (>= 992px)
+   - Stationary 240px sidebar on left
+   - Hamburger button and mobile brand hidden
+   ======================================================== */
+@media (min-width: 992px) {
+  .hamburger-btn,
+  .mobile-brand {
+    display: none !important;
+  }
+
+  .app-sidebar.offcanvas-lg {
+    width: 240px !important;
+    min-width: 240px !important;
+    position: sticky !important;
+    top: 0 !important;
+    height: 100vh !important;
+    transform: none !important;
+    visibility: visible !important;
+    background-color: var(--bg-sidebar) !important;
+    border-right: 1px solid var(--border-sidebar) !important;
+    padding: 24px 16px !important;
+    box-shadow: none !important;
+    z-index: 100 !important;
+  }
+}
+
+/* Tablet & Mobile Viewports (< 992px)
+   - Navigation bar transforms into an offcanvas drawer
+   - Hamburger button in top bar toggles the navigation
+   - Main content takes full screen width
    ======================================================== */
 @media (max-width: 991.98px) {
-  .app-sidebar .brand-title,
-  .brand-title {
-    display: none !important;
-  }
-}
-
-@media (min-width: 768px) and (max-width: 991.98px) {
-  .app-sidebar {
-    width: 70px;
-    min-width: 70px;
-    padding: 20px 8px;
+  .hamburger-btn {
+    display: inline-flex !important;
   }
 
-  .app-sidebar .brand-title,
-  .brand-title,
-  .app-sidebar .nav-label,
-  .nav-label,
-  .user-name {
-    display: none !important;
-  }
-
-  .brand-wrapper {
-    justify-content: center;
-    padding: 0 0 20px 0;
-    text-decoration: none !important;
-  }
-
-  .brand-icon {
-    width: 36px;
-    height: 36px;
-    font-size: 1.15rem;
-    margin: 0 auto;
-  }
-
-  .nav-link-custom {
-    justify-content: center;
-    padding: 12px 8px;
-  }
-
-  .nav-link-custom i {
-    font-size: 1.25rem;
-  }
-
-  .metrics-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-  }
-
-  .top-bar {
-    padding: 16px 24px;
-  }
-
-  .search-box-wrapper {
-    width: 260px;
-  }
-
-  .content-body {
-    padding: 24px;
-  }
-}
-
-/* Mobile Viewport (<= 767.98px)
-   - Sidebar transforms to fixed bottom navigation bar
-   - Header shows compact mobile brand
-   - Sidebar brand is hidden
-   - Content body has bottom padding for navigation bar
-   - Tables scroll smoothly horizontally
-   ======================================================== */
-@media (max-width: 767.98px) {
-  /* Layout: App container flows vertically */
-  .app-container {
-    flex-direction: column;
-    min-height: 100vh;
-  }
-
-  /* Bottom Navigation Bar */
-  .app-sidebar.navbar,
-  .app-sidebar {
-    position: fixed !important;
-    bottom: 0 !important;
-    top: auto !important;
-    left: 0 !important;
-    right: 0 !important;
-    width: 100% !important;
-    min-width: 100% !important;
-    height: 60px !important;
-    max-height: 60px !important;
-    z-index: 1040 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    flex-direction: row !important;
-    background-color: var(--bg-sidebar) !important;
-    border-right: none !important;
-    border-top: 1px solid var(--border-sidebar) !important;
-    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.4);
-  }
-
-  .app-sidebar .sidebar-inner,
-  .app-sidebar > div {
-    display: flex !important;
-    flex-direction: row !important;
-    width: 100% !important;
-    height: 100% !important;
-    justify-content: stretch !important;
-    align-items: center !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  .app-sidebar .sidebar-inner > div {
-    width: 100% !important;
-    height: 100% !important;
-  }
-
-  /* Hide sidebar brand on mobile (shown in top-bar instead) */
-  .app-sidebar .brand-wrapper {
-    display: none !important;
-  }
-
-  /* Bottom Navigation Items */
-  .app-sidebar .sidebar-nav {
-    display: flex !important;
-    flex-direction: row !important;
-    width: 100% !important;
-    height: 100% !important;
-    justify-content: space-around !important;
-    align-items: stretch !important;
-    gap: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  .app-sidebar .nav-item {
-    flex: 1 1 0 !important;
-    display: flex !important;
-    height: 100% !important;
-    margin: 0 !important;
-  }
-
-  .nav-link-custom {
-    flex: 1 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: center !important;
-    align-items: center !important;
-    gap: 2px !important;
-    padding: 6px 2px !important;
-    border-radius: 0 !important;
-    border: none !important;
-    border-top: 2px solid transparent !important;
-    text-align: center !important;
-    font-size: 0.7rem !important;
-    transition: background-color 0.15s, color 0.15s !important;
-    box-shadow: none !important;
-  }
-
-  .nav-link-custom i {
-    font-size: 1.15rem !important;
-    line-height: 1 !important;
-    margin: 0 !important;
-  }
-
-  .nav-link-custom .nav-label {
-    display: block !important;
-    font-size: 0.68rem !important;
-    font-weight: 500 !important;
-    line-height: 1.1 !important;
-    white-space: nowrap !important;
-  }
-
-  .nav-link-custom.active {
-    background-color: rgba(83, 28, 34, 0.45) !important;
-    color: #F9F3ED !important;
-    border-top: 2px solid var(--c-taupe) !important;
-    box-shadow: none !important;
-  }
-
-  /* Main Area & Content */
-  .app-main {
-    width: 100% !important;
-    min-width: 0 !important;
-    padding-bottom: 72px !important; /* Space for fixed bottom nav */
-  }
-
-  .content-body {
-    padding: 16px 14px !important;
-  }
-
-  /* Header & Mobile Brand */
   .mobile-brand {
     display: flex !important;
-    align-items: center !important;
-    gap: 8px !important;
+    align-items: center;
+    gap: 8px;
     text-decoration: none !important;
-    color: var(--text-main) !important;
+    color: var(--text-main);
   }
 
   .mobile-brand .brand-icon {
@@ -902,76 +774,79 @@ body.light-mode .alert-success {
   }
 
   .mobile-brand .brand-title {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     font-weight: 700;
-    display: inline-block !important;
-    letter-spacing: 0.5px;
+  }
+
+  /* Offcanvas Drawer for Sidebar */
+  .app-sidebar.offcanvas-lg {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 270px !important;
+    max-width: 85vw !important;
+    height: 100vh !important;
+    z-index: 1055 !important;
+    background-color: var(--bg-sidebar) !important;
+    border-right: 1px solid var(--border-sidebar) !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5) !important;
+    padding: 0 !important;
+    transition: transform 0.25s ease-in-out !important;
+  }
+
+  .app-sidebar.offcanvas-lg:not(.show) {
+    transform: translateX(-100%) !important;
+    visibility: hidden !important;
+  }
+
+  .app-sidebar.offcanvas-lg.show {
+    transform: translateX(0) !important;
+    visibility: visible !important;
+  }
+
+  .app-sidebar .offcanvas-header {
+    background-color: var(--bg-sidebar);
+    border-bottom: 1px solid var(--border-sidebar);
+  }
+
+  .app-sidebar .sidebar-nav {
+    gap: 6px;
+    padding: 16px;
+  }
+
+  .app-sidebar .nav-link-custom {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .app-sidebar .nav-label {
+    display: inline !important;
+  }
+
+  /* Main Container & Top Bar */
+  .app-main {
+    width: 100% !important;
+    min-width: 0 !important;
+    padding-bottom: 30px !important;
   }
 
   .top-bar {
-    padding: 12px 14px;
-    flex-wrap: wrap;
-    gap: 10px;
-    align-items: center;
+    padding: 14px 20px;
+    gap: 12px;
   }
 
-  .top-bar-right {
-    gap: 10px;
-    margin-left: auto;
-  }
-
-  .user-profile-badge .user-name {
-    display: none !important;
-  }
-
-  .user-avatar {
-    width: 32px;
-    height: 32px;
-    font-size: 0.8rem;
-  }
-
-  .search-box-wrapper {
-    order: 3;
-    width: 100% !important;
-    margin-top: 2px;
-  }
-
-  /* Metrics Grid */
   .metrics-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-bottom: 20px;
+    gap: 14px;
   }
 
-  .metric-card {
-    padding: 14px 16px;
-  }
-
-  .metric-label {
-    font-size: 0.8rem;
-  }
-
-  .metric-value {
-    font-size: 1.45rem;
-  }
-
-  /* Section Header & Filters */
-  .section-header-bar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-
-  .section-actions {
-    flex-wrap: wrap;
-    width: 100%;
-    gap: 8px;
-  }
-
-  .section-actions select,
-  .section-actions a,
-  .section-actions button {
-    flex: 1 1 auto;
+  .content-body {
+    padding: 20px !important;
   }
 
   /* Responsive Table */
@@ -991,26 +866,56 @@ body.light-mode .alert-success {
     font-size: 0.825rem;
     white-space: nowrap;
   }
-
-  /* Modals */
-  .modal-dialog {
-    margin: 12px;
-    max-width: calc(100% - 24px);
-  }
-
-  .modal-body {
-    padding: 16px !important;
-  }
 }
 
 /* Extra Small Mobile (<= 576px, e.g. 375px) */
 @media (max-width: 576px) {
-  .metrics-grid {
-    grid-template-columns: 1fr;
+  .top-bar {
+    padding: 12px 14px;
+    flex-wrap: wrap;
   }
 
-  .section-title {
-    font-size: 1.2rem;
+  .search-box-wrapper {
+    order: 3;
+    width: 100% !important;
+    margin-top: 4px;
+  }
+
+  .user-profile-badge .user-name {
+    display: none !important;
+  }
+
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.8rem;
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .content-body {
+    padding: 16px 12px !important;
+  }
+
+  .section-header-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .section-actions {
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .section-actions select,
+  .section-actions a,
+  .section-actions button {
+    flex: 1 1 auto;
   }
 
   .btn-add-student {
@@ -1018,12 +923,9 @@ body.light-mode .alert-success {
     justify-content: center;
   }
 
-  .nav-link-custom .nav-label {
-    font-size: 0.64rem !important;
-  }
-
-  .nav-link-custom i {
-    font-size: 1.1rem !important;
+  .modal-dialog {
+    margin: 10px;
+    max-width: calc(100% - 20px);
   }
 }
 
@@ -1248,16 +1150,12 @@ body.light-mode .mobile-brand .brand-title {
   color: #220707 !important;
 }
 
-@media (max-width: 767.98px) {
-  body.light-mode .app-sidebar {
-    background-color: #ffffff !important;
-    border-top: 1px solid #E7D8CA !important;
-    box-shadow: 0 -2px 10px rgba(83, 28, 34, 0.08) !important;
-  }
+body.light-mode .app-sidebar.offcanvas-lg {
+  background-color: #ffffff !important;
+  border-right-color: #E7D8CA !important;
+  box-shadow: 4px 0 20px rgba(83, 28, 34, 0.1) !important;
+}
 
-  body.light-mode .nav-link-custom.active {
-    background-color: rgba(231, 216, 202, 0.5) !important;
-    color: #531C22 !important;
-    border-top: 2px solid #531C22 !important;
-  }
+body.light-mode .app-sidebar .offcanvas-header {
+  border-bottom-color: #E7D8CA !important;
 }
