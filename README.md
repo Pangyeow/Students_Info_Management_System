@@ -108,8 +108,6 @@ sims/
 5. Open **phpMyAdmin** from the control panel, select your database, and import `database.sql`.
 6. Visit your site URL and test every CRUD operation.
 
-> **Note:** don't commit your real hosting password to a public repository.
-
 ---
 
 ## Author
