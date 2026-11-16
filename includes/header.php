@@ -13,7 +13,7 @@ if (empty($currentTab)) {
 $searchVal = htmlspecialchars($_GET['search'] ?? '');
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 
 <head>
   <meta charset="UTF-8">
@@ -24,7 +24,8 @@ $searchVal = htmlspecialchars($_GET['search'] ?? '');
   <link href="assets/css/style.css?v=<?= filemtime(__DIR__ . '/../assets/css/style.css') ?>" rel="stylesheet">
   <script>
     (function () {
-      const savedTheme = localStorage.getItem('sims-cici-theme');
+      const savedTheme = localStorage.getItem('sims-cici-theme') || 'dark';
+      document.documentElement.setAttribute('data-bs-theme', savedTheme);
       if (savedTheme === 'light') {
         document.documentElement.classList.add('light-mode');
         document.addEventListener('DOMContentLoaded', () => {
@@ -32,6 +33,8 @@ $searchVal = htmlspecialchars($_GET['search'] ?? '');
           const icon = document.getElementById('themeIcon');
           if (icon) icon.className = 'bi bi-moon-stars-fill';
         });
+      } else {
+        document.documentElement.classList.remove('light-mode');
       }
     })();
   </script>

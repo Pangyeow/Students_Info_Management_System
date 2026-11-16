@@ -214,19 +214,24 @@
   });
 
   function toggleTheme() {
-    const isLight = document.body.classList.toggle('light-mode');
-    const icon = document.getElementById('themeIcon');
-    if (isLight) {
-      localStorage.setItem('sims-cici-theme', 'light');
-      if (icon) icon.className = 'bi bi-moon-stars-fill';
+    const currentTheme = document.documentElement.getAttribute('data-bs-theme') || (document.body.classList.contains('light-mode') ? 'light' : 'dark');
+    const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-bs-theme', nextTheme);
+    if (nextTheme === 'light') {
+      document.body.classList.add('light-mode');
     } else {
-      localStorage.setItem('sims-cici-theme', 'dark');
-      if (icon) icon.className = 'bi bi-sun-fill';
+      document.body.classList.remove('light-mode');
+    }
+    localStorage.setItem('sims-cici-theme', nextTheme);
+    const icon = document.getElementById('themeIcon');
+    if (icon) {
+      icon.className = nextTheme === 'light' ? 'bi bi-moon-stars-fill' : 'bi bi-sun-fill';
     }
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    const currentTheme = localStorage.getItem('sims-cici-theme');
+    const currentTheme = localStorage.getItem('sims-cici-theme') || 'dark';
+    document.documentElement.setAttribute('data-bs-theme', currentTheme);
     const icon = document.getElementById('themeIcon');
     if (currentTheme === 'light') {
       document.body.classList.add('light-mode');
