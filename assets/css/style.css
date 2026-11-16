@@ -725,11 +725,12 @@ body.light-mode .alert-success {
 
 /* Desktop Viewport (>= 992px)
    - Stationary 240px sidebar on left
-   - Hamburger button and mobile brand hidden
+   - Hamburger button, mobile brand, and top-bar-left hidden
    ======================================================== */
 @media (min-width: 992px) {
   .hamburger-btn,
-  .mobile-brand {
+  .mobile-brand,
+  .top-bar-left {
     display: none !important;
   }
 
@@ -750,13 +751,19 @@ body.light-mode .alert-success {
 }
 
 /* Tablet & Mobile Viewports (< 992px)
-   - Navigation bar transforms into an offcanvas drawer
-   - Hamburger button in top bar toggles the navigation
-   - Main content takes full screen width
+   - Sidebar becomes an offcanvas drawer
+   - Hamburger button + brand shown in top bar
+   - Full-width main content
    ======================================================== */
 @media (max-width: 991.98px) {
+  /* --- Hamburger Button & Mobile Brand --- */
   .hamburger-btn {
     display: inline-flex !important;
+  }
+
+  .top-bar-left {
+    display: flex !important;
+    flex-shrink: 0;
   }
 
   .mobile-brand {
@@ -768,17 +775,17 @@ body.light-mode .alert-success {
   }
 
   .mobile-brand .brand-icon {
-    width: 30px;
-    height: 30px;
-    font-size: 1rem;
+    width: 28px;
+    height: 28px;
+    font-size: 0.95rem;
   }
 
   .mobile-brand .brand-title {
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     font-weight: 700;
   }
 
-  /* Offcanvas Drawer for Sidebar */
+  /* --- Offcanvas Drawer --- */
   .app-sidebar.offcanvas-lg {
     position: fixed !important;
     top: 0 !important;
@@ -795,12 +802,13 @@ body.light-mode .alert-success {
     transition: transform 0.25s ease-in-out !important;
   }
 
-  .app-sidebar.offcanvas-lg:not(.show) {
+  .app-sidebar.offcanvas-lg:not(.show):not(.showing) {
     transform: translateX(-100%) !important;
     visibility: hidden !important;
   }
 
-  .app-sidebar.offcanvas-lg.show {
+  .app-sidebar.offcanvas-lg.show,
+  .app-sidebar.offcanvas-lg.showing {
     transform: translateX(0) !important;
     visibility: visible !important;
   }
@@ -808,11 +816,16 @@ body.light-mode .alert-success {
   .app-sidebar .offcanvas-header {
     background-color: var(--bg-sidebar);
     border-bottom: 1px solid var(--border-sidebar);
+    padding: 16px 20px;
+  }
+
+  .app-sidebar .offcanvas-header .brand-wrapper {
+    padding-bottom: 0;
   }
 
   .app-sidebar .sidebar-nav {
-    gap: 6px;
-    padding: 16px;
+    gap: 4px;
+    padding: 12px 16px;
   }
 
   .app-sidebar .nav-link-custom {
@@ -828,28 +841,77 @@ body.light-mode .alert-success {
     display: inline !important;
   }
 
-  /* Main Container & Top Bar */
+  /* --- Main Container --- */
   .app-main {
     width: 100% !important;
     min-width: 0 !important;
-    padding-bottom: 30px !important;
   }
 
+  /* --- Top Bar --- */
   .top-bar {
-    padding: 14px 20px;
-    gap: 12px;
+    padding: 12px 16px;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
   }
 
+  .search-box-wrapper {
+    flex: 1 1 180px;
+    min-width: 0;
+    width: auto;
+  }
+
+  .top-bar-right {
+    gap: 8px;
+  }
+
+  /* --- Content Body --- */
+  .content-body {
+    padding: 20px 16px !important;
+  }
+
+  /* --- Metrics Grid --- */
   .metrics-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 14px;
   }
 
-  .content-body {
-    padding: 20px !important;
+  .metric-card {
+    padding: 16px 18px;
   }
 
-  /* Responsive Table */
+  .metric-value {
+    font-size: 1.5rem;
+  }
+
+  /* --- Section Headers & Actions --- */
+  .section-header-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .section-actions {
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .section-actions form {
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .section-actions select,
+  .section-actions a,
+  .section-actions button,
+  .section-actions .btn-add-student {
+    flex: 1 1 auto;
+    min-width: 120px;
+  }
+
+  /* --- Tables --- */
   .table-card {
     border-radius: 10px;
   }
@@ -866,19 +928,58 @@ body.light-mode .alert-success {
     font-size: 0.825rem;
     white-space: nowrap;
   }
+
+  /* --- Table Footer / Pagination --- */
+  .table-footer {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+  }
+
+  .pagination-group {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* --- Modals --- */
+  .modal-dialog {
+    margin: 16px;
+    max-width: calc(100% - 32px);
+  }
+
+  .modal-body .row .col-6 {
+    flex: 0 0 50%;
+    max-width: 50%;
+  }
+
+  /* --- Add / Edit Form Pages --- */
+  .col-lg-8 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
 }
 
-/* Extra Small Mobile (<= 576px, e.g. 375px) */
+/* Extra Small Mobile (<= 576px) */
 @media (max-width: 576px) {
+  /* --- Top Bar --- */
   .top-bar {
-    padding: 12px 14px;
-    flex-wrap: wrap;
+    padding: 10px 12px;
+  }
+
+  .top-bar-left {
+    flex: 1 1 auto;
   }
 
   .search-box-wrapper {
-    order: 3;
+    order: 10;
+    flex: 0 0 100% !important;
     width: 100% !important;
     margin-top: 4px;
+  }
+
+  .top-bar-right {
+    margin-left: auto;
   }
 
   .user-profile-badge .user-name {
@@ -891,31 +992,38 @@ body.light-mode .alert-success {
     font-size: 0.8rem;
   }
 
+  /* --- Content --- */
+  .content-body {
+    padding: 14px 12px !important;
+  }
+
+  /* --- Metrics --- */
   .metrics-grid {
     grid-template-columns: 1fr;
-    gap: 12px;
+    gap: 10px;
   }
 
-  .content-body {
-    padding: 16px 12px !important;
+  .metric-card {
+    padding: 14px 16px;
   }
 
-  .section-header-bar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
+  .metric-label {
+    font-size: 0.8rem;
   }
 
-  .section-actions {
-    flex-wrap: wrap;
-    width: 100%;
-    gap: 8px;
+  .metric-value {
+    font-size: 1.35rem;
   }
 
-  .section-actions select,
-  .section-actions a,
-  .section-actions button {
-    flex: 1 1 auto;
+  /* --- Section --- */
+  .section-title {
+    font-size: 1.15rem;
+  }
+
+  .section-actions select {
+    font-size: 0.8rem;
+    padding: 6px 28px 6px 10px;
+    min-width: 100px;
   }
 
   .btn-add-student {
@@ -923,9 +1031,60 @@ body.light-mode .alert-success {
     justify-content: center;
   }
 
+  /* --- Filter Forms --- */
+  .section-actions form.d-flex {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  /* --- Table --- */
+  .custom-table th,
+  .custom-table td {
+    padding: 8px 10px;
+    font-size: 0.78rem;
+  }
+
+  /* --- Pagination --- */
+  .table-footer {
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .page-btn {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+  }
+
+  .showing-text {
+    font-size: 0.78rem;
+  }
+
+  /* --- Modals --- */
   .modal-dialog {
     margin: 10px;
     max-width: calc(100% - 20px);
+  }
+
+  .modal-body {
+    padding: 14px !important;
+  }
+
+  .modal-body .row .col-6 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  /* --- Dashboard charts row --- */
+  .row.g-4 > .col-lg-7,
+  .row.g-4 > .col-lg-5 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  /* --- Form pages --- */
+  .col-md-6 {
+    flex: 0 0 100%;
+    max-width: 100%;
   }
 }
 
