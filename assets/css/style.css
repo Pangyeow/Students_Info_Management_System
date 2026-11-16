@@ -103,6 +103,14 @@ body {
   color: var(--text-main);
 }
 
+.mobile-brand {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--text-main);
+}
+
 .sidebar-nav {
   display: flex;
   flex-direction: column;
@@ -140,11 +148,6 @@ body {
   font-weight: 600;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(231, 216, 202, 0.15);
-}
-
-.nav-link-custom.logout:hover {
-  color: #f87171;
-  background-color: rgba(239, 68, 68, 0.15);
 }
 
 /* Main Content Area */
@@ -679,27 +682,20 @@ body.light-mode .alert-success {
   border-color: var(--border-subtle) !important;
 }
 
-/* Responsive adjustments */
-@media (max-width: 991.98px) {
-  .top-bar .navbar-collapse {
-    background-color: var(--bg-card);
-    border: 1px solid var(--border-card);
-    border-radius: 10px;
-    padding: 16px;
-    margin-top: 12px;
-  }
+/* ========================================================
+   RESPONSIVE DESIGN: TABLET & MOBILE
+   ======================================================== */
 
-  body.light-mode .top-bar .navbar-collapse {
-    background-color: #ffffff;
-    border-color: var(--border-card);
-  }
-}
-
-@media (max-width: 992px) {
+/* Tablet Viewport (768px to 991.98px)
+   - Collapses sidebar to an icon-only vertical bar
+   - Brand title and text labels hidden
+   - Metrics grid arranged in 2 columns
+   ======================================================== */
+@media (min-width: 768px) and (max-width: 991.98px) {
   .app-sidebar {
     width: 70px;
     min-width: 70px;
-    padding: 16px 8px;
+    padding: 20px 8px;
   }
 
   .brand-title,
@@ -710,37 +706,307 @@ body.light-mode .alert-success {
 
   .brand-wrapper {
     justify-content: center;
-    padding: 0 0 16px 0;
+    padding: 0 0 20px 0;
+  }
+
+  .brand-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1.15rem;
   }
 
   .nav-link-custom {
     justify-content: center;
-    padding: 12px;
+    padding: 12px 8px;
+  }
+
+  .nav-link-custom i {
+    font-size: 1.25rem;
   }
 
   .metrics-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .top-bar {
+    padding: 16px 24px;
+  }
+
+  .search-box-wrapper {
+    width: 260px;
+  }
+
+  .content-body {
+    padding: 24px;
   }
 }
 
+/* Mobile Viewport (<= 767.98px)
+   - Sidebar transforms to fixed bottom navigation bar
+   - Header shows compact mobile brand
+   - Sidebar brand is hidden
+   - Content body has bottom padding for navigation bar
+   - Tables scroll smoothly horizontally
+   ======================================================== */
+@media (max-width: 767.98px) {
+  /* Layout: App container flows vertically */
+  .app-container {
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  /* Bottom Navigation Bar */
+  .app-sidebar.navbar,
+  .app-sidebar {
+    position: fixed !important;
+    bottom: 0 !important;
+    top: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    height: 60px !important;
+    max-height: 60px !important;
+    z-index: 1040 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    flex-direction: row !important;
+    background-color: var(--bg-sidebar) !important;
+    border-right: none !important;
+    border-top: 1px solid var(--border-sidebar) !important;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.4);
+  }
+
+  .app-sidebar .sidebar-inner,
+  .app-sidebar > div {
+    display: flex !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    height: 100% !important;
+    justify-content: stretch !important;
+    align-items: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .app-sidebar .sidebar-inner > div {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Hide sidebar brand on mobile (shown in top-bar instead) */
+  .app-sidebar .brand-wrapper {
+    display: none !important;
+  }
+
+  /* Bottom Navigation Items */
+  .app-sidebar .sidebar-nav {
+    display: flex !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    height: 100% !important;
+    justify-content: space-around !important;
+    align-items: stretch !important;
+    gap: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .app-sidebar .nav-item {
+    flex: 1 1 0 !important;
+    display: flex !important;
+    height: 100% !important;
+    margin: 0 !important;
+  }
+
+  .nav-link-custom {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 2px !important;
+    padding: 6px 2px !important;
+    border-radius: 0 !important;
+    border: none !important;
+    border-top: 2px solid transparent !important;
+    text-align: center !important;
+    font-size: 0.7rem !important;
+    transition: background-color 0.15s, color 0.15s !important;
+    box-shadow: none !important;
+  }
+
+  .nav-link-custom i {
+    font-size: 1.15rem !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+  }
+
+  .nav-link-custom .nav-label {
+    display: block !important;
+    font-size: 0.68rem !important;
+    font-weight: 500 !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+  }
+
+  .nav-link-custom.active {
+    background-color: rgba(83, 28, 34, 0.45) !important;
+    color: #F9F3ED !important;
+    border-top: 2px solid var(--c-taupe) !important;
+    box-shadow: none !important;
+  }
+
+  /* Main Area & Content */
+  .app-main {
+    width: 100% !important;
+    min-width: 0 !important;
+    padding-bottom: 72px !important; /* Space for fixed bottom nav */
+  }
+
+  .content-body {
+    padding: 16px 14px !important;
+  }
+
+  /* Header & Mobile Brand */
+  .mobile-brand {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    text-decoration: none !important;
+    color: var(--text-main) !important;
+  }
+
+  .mobile-brand .brand-icon {
+    width: 30px;
+    height: 30px;
+    font-size: 1rem;
+  }
+
+  .mobile-brand .brand-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    display: inline-block !important;
+    letter-spacing: 0.5px;
+  }
+
+  .top-bar {
+    padding: 12px 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .top-bar-right {
+    gap: 10px;
+    margin-left: auto;
+  }
+
+  .user-profile-badge .user-name {
+    display: none !important;
+  }
+
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.8rem;
+  }
+
+  .search-box-wrapper {
+    order: 3;
+    width: 100% !important;
+    margin-top: 2px;
+  }
+
+  /* Metrics Grid */
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .metric-card {
+    padding: 14px 16px;
+  }
+
+  .metric-label {
+    font-size: 0.8rem;
+  }
+
+  .metric-value {
+    font-size: 1.45rem;
+  }
+
+  /* Section Header & Filters */
+  .section-header-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .section-actions {
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .section-actions select,
+  .section-actions a,
+  .section-actions button {
+    flex: 1 1 auto;
+  }
+
+  /* Responsive Table */
+  .table-card {
+    border-radius: 10px;
+  }
+
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+  }
+
+  .custom-table th,
+  .custom-table td {
+    padding: 10px 12px;
+    font-size: 0.825rem;
+    white-space: nowrap;
+  }
+
+  /* Modals */
+  .modal-dialog {
+    margin: 12px;
+    max-width: calc(100% - 24px);
+  }
+
+  .modal-body {
+    padding: 16px !important;
+  }
+}
+
+/* Extra Small Mobile (<= 576px, e.g. 375px) */
 @media (max-width: 576px) {
   .metrics-grid {
     grid-template-columns: 1fr;
   }
 
-  .top-bar {
-    padding: 16px;
-    flex-direction: column;
-    gap: 12px;
-    align-items: stretch;
+  .section-title {
+    font-size: 1.2rem;
   }
 
-  .search-box-wrapper {
+  .btn-add-student {
     width: 100%;
+    justify-content: center;
   }
 
-  .content-body {
-    padding: 16px;
+  .nav-link-custom .nav-label {
+    font-size: 0.64rem !important;
+  }
+
+  .nav-link-custom i {
+    font-size: 1.1rem !important;
   }
 }
 
@@ -955,4 +1221,26 @@ body.light-mode .bg-dark {
 body.light-mode .user-avatar {
   background: #531C22;
   color: #F9F3ED;
+}
+
+body.light-mode .mobile-brand {
+  color: #220707 !important;
+}
+
+body.light-mode .mobile-brand .brand-title {
+  color: #220707 !important;
+}
+
+@media (max-width: 767.98px) {
+  body.light-mode .app-sidebar {
+    background-color: #ffffff !important;
+    border-top: 1px solid #E7D8CA !important;
+    box-shadow: 0 -2px 10px rgba(83, 28, 34, 0.08) !important;
+  }
+
+  body.light-mode .nav-link-custom.active {
+    background-color: rgba(231, 216, 202, 0.5) !important;
+    color: #531C22 !important;
+    border-top: 2px solid #531C22 !important;
+  }
 }
