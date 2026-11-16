@@ -1,4 +1,8 @@
 <?php
+/**
+ * edit.php — Edit Student form.
+ * Loads a student by ?id=, shows the form pre-filled and saves changes on submit.
+ */
 include "db_connect.php";
 $error = "";
 $id = (int) ($_GET['id'] ?? $_POST['id'] ?? 0);
@@ -14,6 +18,7 @@ if ($cRes) {
   $coursesList = $cRes->fetch_all(MYSQLI_ASSOC);
 }
 
+/* ---------- CRUD: update a student ---------- */
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
   $student_id = trim($_POST['student_id'] ?? '');
   $first_name = trim($_POST['first_name'] ?? '');
@@ -23,12 +28,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
   $major = trim($_POST['major'] ?? '');
   $year_level = (int) ($_POST['year_level'] ?? 0);
   $status = trim($_POST['status'] ?? 'Enrolled');
-  $gpa = trim($_POST['gpa'] ?? '1.75');
+  $gpa = normalizeGpa($_POST['gpa'] ?? '1.75');
   $remarks = trim($_POST['remarks'] ?? 'Good Standing');
   $retTab = trim($_POST['ret_tab'] ?? $_GET['tab'] ?? '');
 
   if ($student_id === '' || $first_name === '' || $last_name === '' || $email === '' || $course_id <= 0 || $year_level <= 0) {
     $error = "Please fill in all required fields.";
+  } elseif ($gpa === false) {
+    $error = "Grade / GPA must be a number from 0 to 100 (e.g. 1.75 or 92).";
   } else {
     $chkStmt = $conn->prepare("SELECT id FROM courses WHERE id = ?");
     $chkStmt->bind_param("i", $course_id);
@@ -73,13 +80,13 @@ include "includes/header.php";
         <a href="index.php" class="text-secondary text-decoration-none small">
           <i class="bi bi-arrow-left me-1"></i> Back to Students
         </a>
-        <h3 class="text-white fw-bold mt-1">Edit Student</h3>
+        <h3 class="fw-bold mt-1">Edit Student</h3>
       </div>
     </div>
 
     <div class="metric-card p-4">
       <?php if ($error): ?>
-        <div class="alert alert-danger bg-dark text-danger border border-danger border-opacity-25 mb-4">
+        <div class="alert alert-danger text-danger border border-danger border-opacity-25 mb-4">
           <i class="bi bi-exclamation-triangle-fill me-2"></i><?= $error ?>
         </div>
       <?php endif; ?>
@@ -147,7 +154,7 @@ include "includes/header.php";
           <div class="col-md-6">
             <label class="dark-label">Grade / GPA</label>
             <input type="text" name="gpa" id="editStudentGpa" class="form-control dark-input"
-              value="<?= htmlspecialchars($s['gpa'] ?? '1.75') ?>" placeholder="e.g. 1.25"
+              value="<?= htmlspecialchars($s['gpa'] ?? '') ?>" placeholder="e.g. 1.25"
               oninput="autoUpdateRemarks('editStudentGpa', 'editStudentRemarks')"
               onchange="autoUpdateRemarks('editStudentGpa', 'editStudentRemarks')">
             <div class="form-text text-secondary small">Changing GPA updates remarks automatically, or select below.
@@ -172,8 +179,7 @@ include "includes/header.php";
           </div>
         </div>
 
-        <div class="d-flex align-items-center justify-content-end gap-2 mt-4 pt-3 border-top"
-          style="border-color: #202330 !important;">
+        <div class="d-flex align-items-center justify-content-end gap-2 mt-4 pt-3 border-top theme-border-top">
           <a href="index.php" class="btn btn-secondary btn-sm px-3">Cancel</a>
           <button type="submit" class="btn btn-primary btn-sm px-4">
             <i class="bi bi-check2 me-1"></i> Update Student

@@ -1,4 +1,5 @@
-
+-- database.sql — Schema for the SIMS database (courses and students tables).
+-- Optional: db_connect.php creates these tables automatically on first run.
 CREATE TABLE IF NOT EXISTS `courses` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `course_code` VARCHAR(20) NOT NULL UNIQUE,
@@ -21,7 +22,7 @@ CREATE TABLE IF NOT EXISTS `students` (
   `major` VARCHAR(100) DEFAULT NULL,
   `year_level` TINYINT(1) NOT NULL,
   `status` VARCHAR(20) NOT NULL DEFAULT 'Enrolled',
-  `gpa` VARCHAR(10) DEFAULT '1.75',
+  `gpa` DECIMAL(5,2) DEFAULT 1.75,
   `remarks` VARCHAR(100) DEFAULT 'Good Standing',
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),

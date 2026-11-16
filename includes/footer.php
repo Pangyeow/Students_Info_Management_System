@@ -1,4 +1,9 @@
 <?php
+/**
+ * includes/footer.php — Shared page footer.
+ * Closes the layout, loads Bootstrap JS, holds the student details modal and
+ * the page scripts (modals, grade remarks, sidebar, light/dark theme).
+ */
 ?>
 </main>
 </div>
@@ -10,10 +15,10 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content dark-modal">
       <div class="modal-header dark-modal-header">
-        <h5 class="modal-title text-white fs-6">
+        <h5 class="modal-title text-body-emphasis fs-6">
           <i class="bi bi-person-badge me-2 text-primary"></i>Student Details
         </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body p-4">
         <div class="d-flex align-items-center gap-3 mb-4">
@@ -21,7 +26,7 @@
             ST
           </div>
           <div>
-            <h5 class="text-white mb-0" id="modalName">Student Name</h5>
+            <h5 class="mb-0" id="modalName">Student Name</h5>
             <span class="text-secondary small" id="modalStudentId">ID</span>
           </div>
           <div class="ms-auto" id="modalStatusBadge">
@@ -31,39 +36,39 @@
 
         <div class="row g-3">
           <div class="col-6">
-            <div class="p-3 rounded" style="background: #111319; border: 1px solid #202330;">
+            <div class="detail-box">
               <div class="text-secondary small mb-1">Course</div>
-              <div class="text-white fw-semibold" id="modalCourse">-</div>
+              <div class="fw-semibold" id="modalCourse">-</div>
             </div>
           </div>
           <div class="col-6">
-            <div class="p-3 rounded" style="background: #111319; border: 1px solid #202330;">
+            <div class="detail-box">
               <div class="text-secondary small mb-1">Major</div>
-              <div class="text-white fw-semibold" id="modalMajor">-</div>
+              <div class="fw-semibold" id="modalMajor">-</div>
             </div>
           </div>
           <div class="col-6">
-            <div class="p-3 rounded" style="background: #111319; border: 1px solid #202330;">
+            <div class="detail-box">
               <div class="text-secondary small mb-1">Year Level</div>
-              <div class="text-white fw-semibold" id="modalYear">-</div>
+              <div class="fw-semibold" id="modalYear">-</div>
             </div>
           </div>
           <div class="col-6">
-            <div class="p-3 rounded" style="background: #111319; border: 1px solid #202330;">
+            <div class="detail-box">
               <div class="text-secondary small mb-1">Email</div>
-              <div class="text-white small text-truncate" id="modalEmail">-</div>
+              <div class="small text-truncate" id="modalEmail">-</div>
             </div>
           </div>
           <div class="col-6">
-            <div class="p-3 rounded" style="background: #111319; border: 1px solid #202330;">
+            <div class="detail-box">
               <div class="text-secondary small mb-1">Grade / GPA</div>
-              <div class="text-white fw-bold fs-6" id="modalGpa">-</div>
+              <div class="fw-bold fs-6" id="modalGpa">-</div>
             </div>
           </div>
           <div class="col-6">
-            <div class="p-3 rounded" style="background: #111319; border: 1px solid #202330;">
+            <div class="detail-box">
               <div class="text-secondary small mb-1">Academic Standing</div>
-              <div class="text-white fw-semibold small" id="modalRemarks">-</div>
+              <div class="fw-semibold small" id="modalRemarks">-</div>
             </div>
           </div>
         </div>
@@ -78,7 +83,59 @@
   </div>
 </div>
 
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content dark-modal">
+      <div class="modal-body p-4 text-center">
+        <div class="confirm-delete-icon mx-auto mb-3">
+          <i class="bi bi-trash3"></i>
+        </div>
+        <h5 class="mb-2 fs-6 fw-semibold" id="confirmDeleteTitle">Delete record?</h5>
+        <p class="text-secondary small mb-0">
+          Are you sure you want to delete <strong id="confirmDeleteName" class="text-break"></strong>?
+          This can't be undone.
+        </p>
+      </div>
+      <div class="modal-footer dark-modal-footer justify-content-center gap-2">
+        <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger btn-sm px-3" id="confirmDeleteBtn">
+          <i class="bi bi-trash3 me-1"></i> Delete
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
+  /* Delete confirmation: any form with data-confirm-delete="<name>" opens the
+     modal above instead of submitting, and only submits after "Delete" is clicked. */
+  (function () {
+    const modalEl = document.getElementById('confirmDeleteModal');
+    if (!modalEl || !window.bootstrap) return;
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    let pendingForm = null;
+
+    document.addEventListener('submit', function (e) {
+      const form = e.target.closest('form[data-confirm-delete]');
+      if (!form) return;
+      e.preventDefault();
+      pendingForm = form;
+      document.getElementById('confirmDeleteName').textContent = form.dataset.confirmDelete;
+      modal.show();
+    });
+
+    document.getElementById('confirmDeleteBtn').addEventListener('click', function () {
+      if (!pendingForm) return;
+      this.disabled = true;
+      pendingForm.submit();
+    });
+
+    modalEl.addEventListener('hidden.bs.modal', function () {
+      pendingForm = null;
+      document.getElementById('confirmDeleteBtn').disabled = false;
+    });
+  })();
+
   function showStudentModal(data) {
     document.getElementById('modalName').textContent = data.first_name + ' ' + data.last_name;
     document.getElementById('modalStudentId').textContent = 'ID: ' + data.student_id;
@@ -86,7 +143,7 @@
     document.getElementById('modalMajor').textContent = data.major || 'None';
     document.getElementById('modalYear').textContent = data.year_formatted || data.year_level;
     document.getElementById('modalEmail').textContent = data.email || 'N/A';
-    document.getElementById('modalGpa').textContent = data.gpa || '1.75';
+    document.getElementById('modalGpa').textContent = data.gpa || '—';
     document.getElementById('modalRemarks').textContent = data.remarks || 'Good Standing';
 
     const initials = (data.first_name.charAt(0) + data.last_name.charAt(0)).toUpperCase();
@@ -139,6 +196,16 @@
     modal.show();
   }
 
+  /**
+   * Sets the Academic Standing dropdown from the grade typed in the GPA field.
+   * Accepts both scales:
+   *   1.00–1.50 or 90–100 → Dean's Lister
+   *   1.51–2.50 or 80–89  → Good Standing
+   *   2.51–3.00 or 75–79  → Passed
+   *   3.01–5.00 or <75    → Failed
+   * Adds the option to the dropdown if it doesn't exist yet. Leaves it unchanged
+   * when the field is empty or not a number.
+   */
   function autoUpdateRemarks(gpaInputId, remarksSelectId) {
     const gpaInput = document.getElementById(gpaInputId);
     const sel = document.getElementById(remarksSelectId);

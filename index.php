@@ -1,15 +1,26 @@
 <?php
+/**
+ * index.php — Main app page.
+ * Handles grade and course form actions, then renders the active tab
+ * (Dashboard, Students, Courses, Grades or Reports) chosen by ?tab=.
+ */
 include "db_connect.php";
 
-$currentTab = $_GET['tab'] ?? $_GET['view'] ?? 'students';
+$currentTab = $_GET['tab'] ?? $_GET['view'] ?? 'dashboard';
 if (!in_array($currentTab, ['dashboard', 'students', 'courses', 'grades', 'reports'])) {
-  $currentTab = 'students';
+  $currentTab = 'dashboard';
 }
 
+/* ---------- CRUD: update a student's grade (Grades tab modal) ---------- */
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_grade') {
   $gradeId = (int) ($_POST['id'] ?? 0);
-  $gpa = trim($_POST['gpa'] ?? '');
+  $gpa = normalizeGpa($_POST['gpa'] ?? '');
   $remarks = trim($_POST['remarks'] ?? '');
+
+  if ($gpa === false) {
+    header("Location: index.php?tab=grades&err=" . urlencode("Grade / GPA must be a number from 0 to 100 (e.g. 1.75 or 92)."));
+    exit;
+  }
 
   if ($gradeId > 0) {
     $stmtGrade = $conn->prepare("UPDATE students SET gpa = ?, remarks = ? WHERE id = ?");
@@ -20,6 +31,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && isset($_POST['action']) 
   }
 }
 
+/* ---------- CRUD: create a course (rejects blank fields and duplicate codes) ---------- */
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_course') {
   $courseCode = strtoupper(trim($_POST['course_code'] ?? ''));
   $courseName = trim($_POST['course_name'] ?? '');
@@ -49,6 +61,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && isset($_POST['action']) 
   }
 }
 
+/* ---------- CRUD: update a course (code must stay unique) ---------- */
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'edit_course') {
   $courseId = (int) ($_POST['id'] ?? 0);
   $courseCode = strtoupper(trim($_POST['course_code'] ?? ''));
@@ -79,8 +92,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && isset($_POST['action']) 
   }
 }
 
-if (($_GET['action'] ?? '') === 'delete_course' || (($_POST['action'] ?? '') === 'delete_course')) {
-  $delId = (int) ($_GET['id'] ?? $_POST['id'] ?? 0);
+/* ---------- CRUD: delete a course (blocked while students are still assigned to it) ---------- */
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '') === 'delete_course') {
+  $delId = (int) ($_POST['id'] ?? 0);
   if ($delId > 0) {
     $cQuery = $conn->prepare("SELECT course_code, course_name FROM courses WHERE id = ?");
     $cQuery->bind_param("i", $delId);
@@ -123,6 +137,13 @@ if ($coursesRes) {
   $allCourses = $coursesRes->fetch_all(MYSQLI_ASSOC);
 }
 
+/*
+ * ---------- Search / filter query builder ----------
+ * Builds one WHERE clause from the optional search text, course and year filters.
+ * Each active filter adds a condition to $where, its value to $params and its
+ * bind type to $types, so the same prepared WHERE is reused for the count
+ * query and the paginated student list below.
+ */
 $search = trim($_GET['search'] ?? '');
 $courseFilter = trim($_GET['course'] ?? '');
 $yearFilter = trim($_GET['year'] ?? '');
@@ -163,6 +184,8 @@ if ($yearFilter !== '') {
 }
 
 $whereSql = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
+
+// Count matching rows for pagination, then fetch 10 per page.
 
 $countSql = "SELECT COUNT(*) AS c FROM students s JOIN courses c ON s.course_id = c.id $whereSql";
 if (!empty($params)) {
@@ -221,19 +244,19 @@ include "includes/header.php";
 
 <?php if (isset($_GET['msg'])): ?>
   <div
-    class="alert alert-success alert-dismissible fade show bg-dark text-success border border-success border-opacity-25 mb-4"
+    class="alert alert-success alert-dismissible fade show text-success border border-success border-opacity-25 mb-4"
     role="alert">
     <i class="bi bi-check-circle-fill me-2"></i><?= htmlspecialchars($_GET['msg']) ?>
-    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 <?php endif; ?>
 
 <?php if (isset($_GET['err'])): ?>
   <div
-    class="alert alert-danger alert-dismissible fade show bg-dark text-danger border border-danger border-opacity-25 mb-4"
+    class="alert alert-danger alert-dismissible fade show text-danger border border-danger border-opacity-25 mb-4"
     role="alert">
     <i class="bi bi-exclamation-triangle-fill me-2"></i><?= htmlspecialchars($_GET['err']) ?>
-    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 <?php endif; ?>
 
@@ -286,7 +309,7 @@ include "includes/header.php";
                   ?>
                   <tr>
                     <td class="text-secondary fw-semibold"><?= htmlspecialchars($r['student_id']) ?></td>
-                    <td class="text-white fw-medium"><?= htmlspecialchars($r['first_name'] . ' ' . $r['last_name']) ?></td>
+                    <td class="text-body-emphasis fw-medium"><?= htmlspecialchars($r['first_name'] . ' ' . $r['last_name']) ?></td>
                     <td><?= htmlspecialchars($r['course_code']) ?></td>
                     <td><?= renderStatusBadge($r['status']) ?></td>
                   </tr>
@@ -318,11 +341,11 @@ include "includes/header.php";
             ?>
             <div class="mb-3">
               <div class="d-flex justify-content-between small mb-1">
-                <span class="text-white fw-semibold"><?= htmlspecialchars($d['course_code']) ?> <span
+                <span class="text-body-emphasis fw-semibold"><?= htmlspecialchars($d['course_code']) ?> <span
                     class="text-secondary small fw-normal">(<?= htmlspecialchars($d['course_name']) ?>)</span></span>
                 <span class="text-secondary"><?= $d['c'] ?> students (<?= $pct ?>%)</span>
               </div>
-              <div class="progress" style="height: 6px; background-color: #242838;">
+              <div class="progress" style="height: 6px; background-color: var(--bs-secondary-bg);">
                 <div class="progress-bar bg-primary" role="progressbar" style="width: <?= $pct ?>%;"></div>
               </div>
             </div>
@@ -330,7 +353,7 @@ include "includes/header.php";
           <p class="text-secondary small mb-0">No course statistics available yet.</p>
         <?php endif; ?>
 
-        <hr style="border-color: #242838;" class="my-3">
+        <hr class="my-3" style="border-color: var(--bs-border-color);">
         <div class="d-flex justify-content-between align-items-center">
           <span class="text-secondary small">Active Retention Rate:</span>
           <span class="badge-enrolled status-badge">
@@ -385,13 +408,13 @@ include "includes/header.php";
           <?php if ($courseSummary && $courseSummary->num_rows > 0):
             while ($c = $courseSummary->fetch_assoc()): ?>
               <tr>
-                <td class="fw-bold text-white fs-6">
-                  <span class="badge bg-dark border border-secondary text-white px-2 py-1">
-                    <i class="bi bi-journal-code text-primary me-1"></i><?= htmlspecialchars($c['course_code']) ?>
+                <td class="fw-bold text-body-emphasis fs-6">
+                  <span class="badge bg-body-secondary border border-secondary text-body-emphasis px-2 py-1">
+                    <?= htmlspecialchars($c['course_code']) ?>
                   </span>
                 </td>
-                <td class="text-white fw-medium"><?= htmlspecialchars($c['course_name']) ?></td>
-                <td class="fw-bold text-white"><?= (int) $c['total'] ?></td>
+                <td class="text-body-emphasis fw-medium"><?= htmlspecialchars($c['course_name']) ?></td>
+                <td class="fw-bold text-body-emphasis"><?= (int) $c['total'] ?></td>
                 <td><span class="status-badge badge-enrolled"><?= (int) $c['enrolled'] ?> Enrolled</span></td>
                 <td><span class="status-badge badge-inactive"><?= (int) $c['inactive'] ?> Inactive</span></td>
                 <td style="text-align: right; padding-right: 24px;">
@@ -407,11 +430,14 @@ include "includes/header.php";
                     ], JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8') ?>)'>
                       <i class="bi bi-pencil"></i>
                     </button>
-                    <a href="index.php?tab=courses&action=delete_course&id=<?= $c['id'] ?>" class="action-btn delete-btn"
-                      title="Delete Course"
-                      onclick="return confirm('Are you sure you want to delete course <?= htmlspecialchars(addslashes($c['course_code'])) ?>?');">
-                      <i class="bi bi-trash3"></i>
-                    </a>
+                    <form method="post" action="index.php?tab=courses" class="d-inline m-0"
+                      data-confirm-delete="course <?= htmlspecialchars($c['course_code']) ?>">
+                      <input type="hidden" name="action" value="delete_course">
+                      <input type="hidden" name="id" value="<?= (int) $c['id'] ?>">
+                      <button type="submit" class="action-btn delete-btn" title="Delete Course" aria-label="Delete Course">
+                        <i class="bi bi-trash3"></i>
+                      </button>
+                    </form>
                   </div>
                 </td>
               </tr>
@@ -478,16 +504,16 @@ include "includes/header.php";
         <tbody>
           <?php if (!empty($students)):
             foreach ($students as $row):
-              $studentGpa = !empty($row['gpa']) ? htmlspecialchars($row['gpa']) : '1.75';
+              $studentGpa = $row['gpa'] !== null ? htmlspecialchars($row['gpa']) : '—';
               $studentRemarks = !empty($row['remarks']) ? $row['remarks'] : 'Good Standing';
               ?>
               <tr>
                 <td class="text-secondary fw-semibold"><?= htmlspecialchars($row['student_id']) ?></td>
-                <td class="text-white fw-medium"><?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?></td>
+                <td class="text-body-emphasis fw-medium"><?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?></td>
                 <td><?= htmlspecialchars($row['course_code']) ?></td>
                 <td><?= formatYearLevel($row['year_level']) ?></td>
                 <td>
-                  <span class="badge bg-dark text-white border border-secondary px-2 py-1 fs-6 fw-bold">
+                  <span class="badge bg-body-secondary text-body-emphasis border border-secondary px-2 py-1 fs-6 fw-bold">
                     <?= $studentGpa ?>
                   </span>
                 </td>
@@ -500,7 +526,7 @@ include "includes/header.php";
                     "name" => $row["first_name"] . " " . $row["last_name"],
                     "course" => $row["course_code"],
                     "year" => formatYearLevel($row["year_level"]),
-                    "gpa" => $row["gpa"] ?? "1.75",
+                    "gpa" => $row["gpa"] ?? "",
                     "remarks" => html_entity_decode($row["remarks"] ?? "Good Standing", ENT_QUOTES, "UTF-8")
                   ], JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, "UTF-8") ?>)'>
                     <i class="bi bi-pencil-square me-1"></i> Edit Grade
@@ -585,8 +611,8 @@ include "includes/header.php";
   </div>
 
   <div class="table-card mt-4">
-    <div class="p-3 border-bottom" style="border-color: #202330 !important;">
-      <h5 class="text-white fs-6 mb-0">Year Level Distribution</h5>
+    <div class="p-3 border-bottom" style="border-color: var(--bs-border-color) !important;">
+      <h5 class="fs-6 mb-0">Year Level Distribution</h5>
     </div>
     <div class="table-responsive">
       <table class="custom-table">
@@ -605,7 +631,7 @@ include "includes/header.php";
             $yInactive = (int) ($conn->query("SELECT COUNT(*) AS c FROM students WHERE year_level = $y AND status = 'Inactive'")->fetch_assoc()['c'] ?? 0);
             ?>
             <tr>
-              <td class="text-white fw-semibold"><?= formatYearLevel($y) ?> Year</td>
+              <td class="text-body-emphasis fw-semibold"><?= formatYearLevel($y) ?> Year</td>
               <td><?= $yCount ?></td>
               <td><span class="status-badge badge-enrolled"><?= $yEnrolled ?> Enrolled</span></td>
               <td><span class="status-badge badge-inactive"><?= $yInactive ?> Inactive</span></td>
@@ -677,7 +703,7 @@ include "includes/header.php";
             <?php foreach ($students as $row): ?>
               <tr>
                 <td class="fw-semibold text-secondary"><?= htmlspecialchars($row['student_id']) ?></td>
-                <td class="fw-medium text-white">
+                <td class="fw-medium text-body-emphasis">
                   <?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?>
                 </td>
                 <td><?= htmlspecialchars($row['course_code']) ?></td>
@@ -697,7 +723,7 @@ include "includes/header.php";
                       "year_level" => $row["year_level"],
                       "year_formatted" => formatYearLevel($row["year_level"]),
                       "status" => $row["status"] ?? "Enrolled",
-                      "gpa" => $row["gpa"] ?? "1.75",
+                      "gpa" => $row["gpa"] ?? "",
                       "remarks" => html_entity_decode($row["remarks"] ?? "Good Standing", ENT_QUOTES, "UTF-8")
                     ], JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, "UTF-8") ?>)'>
                       <i class="bi bi-eye"></i>
@@ -706,10 +732,13 @@ include "includes/header.php";
                       <i class="bi bi-pencil"></i>
                     </a>
 
-                    <a href="delete.php?id=<?= $row['id'] ?>" class="action-btn delete-btn" title="Delete Student"
-                      onclick="return confirm('Are you sure you want to delete <?= htmlspecialchars(addslashes($row['first_name'] . ' ' . $row['last_name'])) ?>?');">
-                      <i class="bi bi-trash3"></i>
-                    </a>
+                    <form method="post" action="delete.php" class="d-inline m-0"
+                      data-confirm-delete="<?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?>">
+                      <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
+                      <button type="submit" class="action-btn delete-btn" title="Delete Student" aria-label="Delete Student">
+                        <i class="bi bi-trash3"></i>
+                      </button>
+                    </form>
                   </div>
                 </td>
               </tr>
@@ -766,10 +795,10 @@ include "includes/header.php";
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content dark-modal">
       <div class="modal-header dark-modal-header">
-        <h5 class="modal-title text-white fs-6">
+        <h5 class="modal-title text-body-emphasis fs-6">
           <i class="bi bi-person-plus-fill me-2 text-primary"></i>Add New Student
         </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form action="add.php" method="post">
         <div class="modal-body p-4">
@@ -859,10 +888,10 @@ include "includes/header.php";
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content dark-modal">
       <div class="modal-header dark-modal-header">
-        <h5 class="modal-title text-white fs-6">
+        <h5 class="modal-title text-body-emphasis fs-6">
           <i class="bi bi-journal-plus me-2 text-primary"></i>Add Academic Course
         </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form action="index.php?tab=courses" method="post">
         <input type="hidden" name="action" value="add_course">
@@ -894,10 +923,10 @@ include "includes/header.php";
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content dark-modal">
       <div class="modal-header dark-modal-header">
-        <h5 class="modal-title text-white fs-6">
+        <h5 class="modal-title text-body-emphasis fs-6">
           <i class="bi bi-pencil-square me-2 text-primary"></i>Edit Academic Course
         </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form action="index.php?tab=courses" method="post">
         <input type="hidden" name="action" value="edit_course">
@@ -929,23 +958,23 @@ include "includes/header.php";
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content dark-modal">
       <div class="modal-header dark-modal-header">
-        <h5 class="modal-title text-white fs-6">
+        <h5 class="modal-title text-body-emphasis fs-6">
           <i class="bi bi-award-fill me-2 text-primary"></i>Edit Student Grade & Standing
         </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form action="index.php?tab=grades" method="post">
         <input type="hidden" name="action" value="update_grade">
         <input type="hidden" name="id" id="editGradeStudentId">
         <div class="modal-body p-4">
-          <div class="p-3 rounded mb-3" style="background: #111319; border: 1px solid #202330;">
+          <div class="detail-box mb-3">
             <div class="d-flex justify-content-between align-items-center mb-1">
-              <span class="text-white fw-bold fs-6" id="editGradeStudentName">Student Name</span>
+              <span class="fw-bold fs-6" id="editGradeStudentName">Student Name</span>
               <span class="badge bg-primary text-white" id="editGradeStudentCourse">Course</span>
             </div>
             <div class="text-secondary small">
-              ID: <span id="editGradeStudentIdText" class="text-light">2026-0000</span> | Year: <span
-                id="editGradeStudentYear" class="text-light">1st</span>
+              ID: <span id="editGradeStudentIdText" class="text-body-emphasis">2026-0000</span> | Year: <span
+                id="editGradeStudentYear" class="text-body-emphasis">1st</span>
             </div>
           </div>
 

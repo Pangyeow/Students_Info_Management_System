@@ -1,15 +1,13 @@
 <?php
-
+/**
+ * db_connect.php — Opens the MySQL connection ($conn) used by every page.
+ * Also creates the courses/students tables if missing, upgrades older table
+ * layouts and seeds sample data on first run.
+ */
 $host = "localhost";
 $user = "root";
 $pass = "";
 $db = "sims_db";
-
-// InfinityFree configuration (uncomment if deploying to live host)
-// $host = "sql203.infinityfree.com";
-// $user = "if0_43425374";
-// $pass = "pangyeow22";
-// $db   = "if0_43425374_maniella";
 
 $conn = new mysqli($host, $user, $pass, $db);
 if ($conn->connect_error) {
@@ -59,7 +57,11 @@ if ($tableCheck && $tableCheck->num_rows > 0) {
 
     $colGpa = $conn->query("SHOW COLUMNS FROM `students` LIKE 'gpa'");
     if ($colGpa && $colGpa->num_rows === 0) {
-        $conn->query("ALTER TABLE `students` ADD COLUMN `gpa` VARCHAR(10) NULL DEFAULT '1.75' AFTER `status`");
+        $conn->query("ALTER TABLE `students` ADD COLUMN `gpa` DECIMAL(5,2) NULL DEFAULT 1.75 AFTER `status`");
+    } elseif ($colGpa && stripos($colGpa->fetch_assoc()['Type'] ?? '', 'varchar') === 0) {
+        // Upgrade old text GPA column to DECIMAL(5,2). Non-numeric values (e.g. "INC") become NULL.
+        $conn->query("UPDATE `students` SET `gpa` = NULL WHERE `gpa` IS NOT NULL AND TRIM(`gpa`) NOT REGEXP '^[0-9]{1,3}(\\\\.[0-9]+)?$'");
+        $conn->query("ALTER TABLE `students` MODIFY COLUMN `gpa` DECIMAL(5,2) NULL DEFAULT 1.75");
     }
 
     $colRemarks = $conn->query("SHOW COLUMNS FROM `students` LIKE 'remarks'");
@@ -77,6 +79,25 @@ if ($tableCheck && $tableCheck->num_rows > 0) {
                 ('2026-0103', 'Carlo', 'Reyes', 'carlo.reyes@example.com', 1, 'Network & Security', 1, 'Inactive'),
                 ('2026-0104', 'Ana', 'Lopez', 'ana.lopez@example.com', 3, 'Financial Management', 4, 'Enrolled')");
         }
+    }
+}
+
+if (!function_exists('normalizeGpa')) {
+    /**
+     * Validates a GPA from a form for the DECIMAL(5,2) column.
+     * Returns the value as a string, null when blank, or false when invalid
+     * (not a number, or outside 0–100).
+     */
+    function normalizeGpa($raw)
+    {
+        $raw = trim((string) $raw);
+        if ($raw === '') {
+            return null;
+        }
+        if (!is_numeric($raw) || (float) $raw < 0 || (float) $raw > 100) {
+            return false;
+        }
+        return number_format((float) $raw, 2, '.', '');
     }
 }
 
@@ -113,15 +134,15 @@ if (!function_exists('renderRemarksBadge')) {
         }
         $decoded = html_entity_decode($r, ENT_QUOTES, 'UTF-8');
         if (stripos($decoded, "Dean") !== false || stripos($decoded, "Honor") !== false) {
-            return '<span class="status-badge" style="background: rgba(234, 179, 8, 0.15); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.3);"><i class="bi bi-award-fill me-1"></i>' . htmlspecialchars($decoded) . '</span>';
+            return '<span class="status-badge remark-dean"><i class="bi bi-award-fill me-1"></i>' . htmlspecialchars($decoded) . '</span>';
         } elseif (stripos($decoded, 'Good') !== false) {
             return '<span class="status-badge badge-enrolled"><i class="bi bi-check-circle-fill me-1"></i>' . htmlspecialchars($decoded) . '</span>';
         } elseif (stripos($decoded, 'Pass') !== false) {
-            return '<span class="status-badge" style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3);"><i class="bi bi-check2-circle me-1"></i>' . htmlspecialchars($decoded) . '</span>';
+            return '<span class="status-badge remark-pass"><i class="bi bi-check2-circle me-1"></i>' . htmlspecialchars($decoded) . '</span>';
         } elseif (stripos($decoded, 'Fail') !== false || stripos($decoded, 'Dropped') !== false) {
-            return '<span class="status-badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);"><i class="bi bi-x-circle-fill me-1"></i>' . htmlspecialchars($decoded) . '</span>';
+            return '<span class="status-badge remark-fail"><i class="bi bi-x-circle-fill me-1"></i>' . htmlspecialchars($decoded) . '</span>';
         } elseif (stripos($decoded, 'Incomplete') !== false || stripos($decoded, 'Credit') !== false) {
-            return '<span class="status-badge" style="background: rgba(249, 115, 22, 0.15); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.3);"><i class="bi bi-exclamation-circle-fill me-1"></i>' . htmlspecialchars($decoded) . '</span>';
+            return '<span class="status-badge remark-incomplete"><i class="bi bi-exclamation-circle-fill me-1"></i>' . htmlspecialchars($decoded) . '</span>';
         } else {
             return '<span class="status-badge badge-inactive"><i class="bi bi-info-circle-fill me-1"></i>' . htmlspecialchars($decoded) . '</span>';
         }
